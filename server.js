@@ -1,15 +1,14 @@
 // A tiny web server that does two jobs:
 //   1. Serves the to-do app (index.html, styles.css, app.js)
-//   2. Provides an /api/generate endpoint that asks Claude to turn a
-//      plain-language goal into a short checklist of tasks.
+//   2. Provides an /api/generate endpoint that asks Google Gemini (free) to
+//      turn a plain-language goal into a short checklist of tasks.
 //
-// Your Anthropic API key lives here on the server (loaded from .env), never
-// in the browser — that keeps it secret.
+// Your Gemini API key lives here on the server (loaded from .env), never in
+// the browser — that keeps it secret.
 
 import express from "express";
-import Anthropic from "@anthropic-ai/sdk";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,63 +16,71 @@ const app = express();
 app.use(express.json());
 app.use(express.static(__dirname)); // serve the front-end files
 
-// Build the Claude client only when it's first needed, so the app still boots
-// (and serves the page) even before an API key has been added.
-let client;
-function getClient() {
-  if (!client) {
-    client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
-  }
-  return client;
-}
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 app.post("/api/generate", async (req, res) => {
   const goal = (req.body?.goal || "").trim();
   if (!goal) {
     return res.status(400).json({ error: "Please describe a goal first." });
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     return res.status(500).json({
       error:
-        "AI isn't configured yet. Copy .env.example to .env, add your ANTHROPIC_API_KEY, and restart.",
+        "AI isn't configured yet. Copy .env.example to .env, add your GEMINI_API_KEY, and restart.",
     });
   }
 
   try {
-    const response = await getClient().messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      system:
-        "You turn a user's goal into a short, ordered checklist of concrete, " +
-        "actionable to-do items. Return between 3 and 7 tasks. Each task is a " +
-        "brief imperative phrase (e.g. 'Book the venue'). No numbering, no extra text.",
-      messages: [{ role: "user", content: `Goal: ${goal}` }],
-      output_config: {
-        format: {
-          type: "json_schema",
-          schema: {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+    const aiResponse = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [
+            {
+              text:
+                "You turn a user's goal into a short, ordered checklist of concrete, " +
+                "actionable to-do items. Return between 3 and 7 tasks. Each task is a " +
+                "brief imperative phrase (e.g. 'Book the venue'). No numbering, no extra text.",
+            },
+          ],
+        },
+        contents: [{ parts: [{ text: `Goal: ${goal}` }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
             type: "object",
             properties: {
               tasks: { type: "array", items: { type: "string" } },
             },
             required: ["tasks"],
-            additionalProperties: false,
           },
         },
-      },
+      }),
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const { tasks } = JSON.parse(textBlock?.text ?? '{"tasks":[]}');
+    if (!aiResponse.ok) {
+      const detail = await aiResponse.text();
+      console.error("Gemini error:", aiResponse.status, detail);
+      if (aiResponse.status === 400 || aiResponse.status === 403) {
+        return res.status(500).json({
+          error:
+            "AI couldn't run — your GEMINI_API_KEY may be missing or invalid. Double-check it in .env.",
+        });
+      }
+      return res.status(500).json({ error: "Sorry — something went wrong generating tasks." });
+    }
+
+    const data = await aiResponse.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{"tasks":[]}';
+    const { tasks } = JSON.parse(text);
     res.json({ tasks: Array.isArray(tasks) ? tasks : [] });
   } catch (err) {
     console.error(err);
-    if (err instanceof Anthropic.AuthenticationError) {
-      return res.status(500).json({
-        error:
-          "AI isn't configured yet. Add your ANTHROPIC_API_KEY to the .env file and restart.",
-      });
-    }
     res.status(500).json({ error: "Sorry — something went wrong generating tasks." });
   }
 });
