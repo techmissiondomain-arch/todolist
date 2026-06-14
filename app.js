@@ -1,17 +1,22 @@
 // A small to-do list that saves your tasks in the browser.
 // Each task looks like:
-//   { text, done, due?, score?, schedule?, subtasks?: [{ text, done }] }
+//   { text, done, status?, project?, due?, score?, schedule?, subtasks?: [{ text, done }] }
 
 const STORAGE_KEY = "todolist.tasks";
 
 const form = document.getElementById("new-task-form");
 const input = document.getElementById("new-task-input");
 const list = document.getElementById("task-list");
+const boardEl = document.getElementById("board");
 const counter = document.getElementById("task-counter");
 const clearCompletedBtn = document.getElementById("clear-completed-btn");
+const projectFilter = document.getElementById("project-filter");
+const viewToggle = document.getElementById("view-toggle");
 
 // Load any previously saved tasks, or start with an empty list.
 let tasks = loadTasks();
+let view = "list"; // "list" or "board"
+let activeProject = "all"; // project filter
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -41,11 +46,75 @@ function scoreLevel(score) {
 
 const SCHEDULE_LABELS = { today: "Today", this_week: "This week", later: "Later" };
 
-// Draw the whole list from scratch based on the current tasks.
+const STATUSES = ["todo", "in_progress", "done"];
+const STATUS_LABELS = { todo: "To do", in_progress: "In progress", done: "Done" };
+
+function getStatus(task) {
+  if (task.status && STATUSES.includes(task.status)) return task.status;
+  return task.done ? "done" : "todo";
+}
+
+function setStatus(index, status) {
+  tasks[index].status = status;
+  tasks[index].done = status === "done";
+  saveTasks();
+  render();
+}
+
+function moveStatus(index, direction) {
+  const current = STATUSES.indexOf(getStatus(tasks[index]));
+  const next = Math.max(0, Math.min(STATUSES.length - 1, current + direction));
+  setStatus(index, STATUSES[next]);
+}
+
+function matchesFilter(task) {
+  return activeProject === "all" || (task.project || "") === activeProject;
+}
+
+// Add the project / score / schedule badges (whichever the task has) to a row.
+function appendBadges(container, task) {
+  if (task.project) {
+    const badge = document.createElement("span");
+    badge.className = "badge project";
+    badge.textContent = task.project;
+    container.appendChild(badge);
+  }
+  if (typeof task.score === "number") {
+    const badge = document.createElement("span");
+    badge.className = `badge score ${scoreLevel(task.score)}`;
+    badge.textContent = task.score;
+    badge.title = "AI priority score";
+    container.appendChild(badge);
+  }
+  if (task.schedule && SCHEDULE_LABELS[task.schedule]) {
+    const badge = document.createElement("span");
+    badge.className = `badge schedule ${task.schedule}`;
+    badge.textContent = SCHEDULE_LABELS[task.schedule];
+    container.appendChild(badge);
+  }
+}
+
+// --- Rendering ------------------------------------------------------------
 function render() {
+  updateProjectFilter();
+  if (view === "list") {
+    boardEl.hidden = true;
+    list.hidden = false;
+    renderList();
+  } else {
+    list.hidden = true;
+    boardEl.hidden = false;
+    renderBoard();
+  }
+  updateProgress();
+}
+
+function renderList() {
   list.innerHTML = "";
 
   tasks.forEach((task, index) => {
+    if (!matchesFilter(task)) return;
+
     const li = document.createElement("li");
     if (task.done) {
       li.classList.add("done");
@@ -59,7 +128,6 @@ function render() {
     checkbox.checked = task.done;
     checkbox.addEventListener("change", () => toggleTask(index));
 
-    // Task text — click to edit (rename).
     const label = document.createElement("span");
     label.className = "task-text";
     label.textContent = task.text;
@@ -67,25 +135,8 @@ function render() {
     label.addEventListener("click", () => startEditing(index, row, label));
 
     row.append(checkbox, label);
+    appendBadges(row, task);
 
-    // Priority score badge (after AI scoring).
-    if (typeof task.score === "number") {
-      const badge = document.createElement("span");
-      badge.className = `badge score ${scoreLevel(task.score)}`;
-      badge.textContent = task.score;
-      badge.title = "AI priority score";
-      row.appendChild(badge);
-    }
-
-    // Schedule badge (after AI scheduling).
-    if (task.schedule && SCHEDULE_LABELS[task.schedule]) {
-      const badge = document.createElement("span");
-      badge.className = `badge schedule ${task.schedule}`;
-      badge.textContent = SCHEDULE_LABELS[task.schedule];
-      row.appendChild(badge);
-    }
-
-    // Due date — pick a day; shows red when overdue and not done.
     const due = document.createElement("input");
     due.type = "date";
     due.className = "due-date";
@@ -103,14 +154,73 @@ function render() {
 
     row.append(due, deleteBtn);
     li.appendChild(row);
-
-    // Subtasks (steps) under the task.
     li.appendChild(renderSubtasks(task, index));
-
     list.appendChild(li);
   });
+}
 
-  updateProgress();
+function renderBoard() {
+  boardEl.innerHTML = "";
+
+  STATUSES.forEach((status) => {
+    const col = document.createElement("div");
+    col.className = "board-col";
+
+    const count = tasks.filter((t) => matchesFilter(t) && getStatus(t) === status).length;
+    const header = document.createElement("h3");
+    header.className = "board-col-title";
+    header.textContent = `${STATUS_LABELS[status]} (${count})`;
+    col.appendChild(header);
+
+    tasks.forEach((task, index) => {
+      if (!matchesFilter(task) || getStatus(task) !== status) return;
+      col.appendChild(buildCard(task, index));
+    });
+
+    boardEl.appendChild(col);
+  });
+}
+
+function buildCard(task, index) {
+  const card = document.createElement("div");
+  card.className = "card" + (task.done ? " done" : "");
+
+  const text = document.createElement("div");
+  text.className = "card-text";
+  text.textContent = task.text;
+  card.appendChild(text);
+
+  const badges = document.createElement("div");
+  badges.className = "card-badges";
+  appendBadges(badges, task);
+  if (badges.children.length) {
+    card.appendChild(badges);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+
+  const left = document.createElement("button");
+  left.textContent = "◀";
+  left.title = "Move left";
+  left.disabled = getStatus(task) === "todo";
+  left.addEventListener("click", () => moveStatus(index, -1));
+
+  const right = document.createElement("button");
+  right.textContent = "▶";
+  right.title = "Move right";
+  right.disabled = getStatus(task) === "done";
+  right.addEventListener("click", () => moveStatus(index, 1));
+
+  const del = document.createElement("button");
+  del.textContent = "×";
+  del.className = "delete";
+  del.setAttribute("aria-label", "Delete task");
+  del.addEventListener("click", () => deleteTask(index));
+
+  actions.append(left, right, del);
+  card.appendChild(actions);
+  return card;
 }
 
 // Build the subtasks block for one task: existing steps + an "add step" box.
@@ -154,6 +264,29 @@ function renderSubtasks(task, index) {
   wrap.appendChild(adder);
 
   return wrap;
+}
+
+// Rebuild the project filter dropdown from the projects currently in use.
+function updateProjectFilter() {
+  const projects = [...new Set(tasks.map((t) => t.project).filter(Boolean))].sort();
+  if (activeProject !== "all" && !projects.includes(activeProject)) {
+    activeProject = "all";
+  }
+
+  projectFilter.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "all";
+  allOption.textContent = "All projects";
+  projectFilter.appendChild(allOption);
+
+  projects.forEach((project) => {
+    const option = document.createElement("option");
+    option.value = project;
+    option.textContent = project;
+    projectFilter.appendChild(option);
+  });
+
+  projectFilter.value = activeProject;
 }
 
 // Swap a task's label for a text box so the user can rename it.
@@ -207,13 +340,15 @@ function updateProgress() {
 }
 
 function addTask(text) {
-  tasks.push({ text: text, done: false });
+  tasks.push({ text: text, done: false, status: "todo" });
   saveTasks();
   render();
 }
 
 function toggleTask(index) {
-  tasks[index].done = !tasks[index].done;
+  const nowDone = !tasks[index].done;
+  tasks[index].done = nowDone;
+  tasks[index].status = nowDone ? "done" : "todo";
   saveTasks();
   render();
 }
@@ -247,7 +382,19 @@ function deleteSubtask(taskIndex, subIndex) {
   render();
 }
 
+// --- View + filter controls -----------------------------------------------
+function toggleView() {
+  view = view === "list" ? "board" : "list";
+  viewToggle.textContent = view === "list" ? "📋 Board view" : "📃 List view";
+  render();
+}
+
 clearCompletedBtn.addEventListener("click", clearCompleted);
+viewToggle.addEventListener("click", toggleView);
+projectFilter.addEventListener("change", () => {
+  activeProject = projectFilter.value;
+  render();
+});
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -408,10 +555,42 @@ async function scheduleTasks() {
 
 scheduleBtn.addEventListener("click", scheduleTasks);
 
+// --- AI: organize the inbox (project + score + due) -----------------------
+const organizeBtn = document.getElementById("ai-organize-btn");
+
+async function organizeTasks() {
+  if (tasks.length < 1) {
+    showStatus("Add a task first.");
+    return;
+  }
+  organizeBtn.disabled = true;
+  showStatus("Organizing…");
+  try {
+    const data = await callApi("/api/organize", { tasks: taskTexts() });
+    if (data) {
+      data.items.forEach((item, i) => {
+        tasks[i].project = item.project || null;
+        tasks[i].score = item.score;
+        if (item.due) tasks[i].due = item.due;
+      });
+      saveTasks();
+      render();
+      showStatus("Organized — projects, priorities, and due dates added.");
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    organizeBtn.disabled = false;
+  }
+}
+
+organizeBtn.addEventListener("click", organizeTasks);
+
 // --- AI: ask a question about the tasks -----------------------------------
 const askInput = document.getElementById("ai-ask-input");
 const askBtn = document.getElementById("ai-ask-btn");
 const answerEl = document.getElementById("ai-answer");
+const projectcheckBtn = document.getElementById("ai-projectcheck-btn");
 
 function showAnswer(message) {
   answerEl.textContent = message;
@@ -443,6 +622,33 @@ askBtn.addEventListener("click", askTasks);
 askInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") askTasks();
 });
+
+// --- AI: project check (risk + on-track summary) --------------------------
+async function projectCheck() {
+  if (tasks.length < 1) {
+    showStatus("Add a task first.");
+    return;
+  }
+  projectcheckBtn.disabled = true;
+  showAnswer("");
+  showStatus("Checking…");
+  try {
+    const payload = {
+      tasks: tasks.map((t) => ({ text: t.text, done: !!t.done, due: t.due || null })),
+    };
+    const data = await callApi("/api/projectcheck", payload);
+    if (data) {
+      showStatus("");
+      showAnswer("🔮 " + (data.summary || "No summary."));
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    projectcheckBtn.disabled = false;
+  }
+}
+
+projectcheckBtn.addEventListener("click", projectCheck);
 
 // Show whatever was saved when the page first loads.
 render();

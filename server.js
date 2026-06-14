@@ -4,6 +4,8 @@
 //   /api/score      — score each task's priority 0–100
 //   /api/schedule   — sort tasks into Today / This week / Later
 //   /api/ask        — answer a question about the task list
+//   /api/organize   — assign a project, score, and due date to each task
+//   /api/projectcheck — AI project-manager risk + on-track summary
 //
 // All AI endpoints use Google Gemini's free API. Your key lives here on the
 // server (loaded from .env), never in the browser.
@@ -248,6 +250,95 @@ app.post("/api/ask", async (req, res) => {
       },
     });
     res.json({ answer: typeof result.answer === "string" ? result.answer : "" });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Organize the inbox: project + score + due for each task ---------------
+app.post("/api/organize", async (req, res) => {
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  if (tasks.length < 1) {
+    return res.status(400).json({ error: "Add a task first." });
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const numbered = tasks.map((t, i) => `${i}: ${t}`).join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You organize a to-do inbox. For each task choose: a short project/category name " +
+        "(1-2 words; reuse the same name for related tasks), a priority score from 0 to 100, " +
+        "and a suggested due date as YYYY-MM-DD (or an empty string if there's no clear " +
+        "deadline). Return one item per task, in the SAME order. Exactly one item per task.",
+      prompt: `Today is ${today}.\nTasks:\n${numbered}`,
+      schema: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                project: { type: "string" },
+                score: { type: "integer" },
+                due: { type: "string" },
+              },
+              required: ["project", "score", "due"],
+            },
+          },
+        },
+        required: ["items"],
+      },
+    });
+
+    const items = Array.isArray(result.items) ? result.items : [];
+    if (items.length !== tasks.length) {
+      return res.status(500).json({ error: "The AI returned the wrong number of items — please try again." });
+    }
+    const cleaned = items.map((it) => ({
+      project: String(it.project || "").slice(0, 40),
+      score: Math.max(0, Math.min(100, Math.round(Number(it.score) || 0))),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(it.due) ? it.due : null,
+    }));
+    res.json({ items: cleaned });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- AI project manager: risk + on-track summary --------------------------
+app.post("/api/projectcheck", async (req, res) => {
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  if (tasks.length < 1) {
+    return res.status(400).json({ error: "Add a task first." });
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const lines = tasks
+    .map((t, i) => {
+      const statusText = t.done ? "done" : "open";
+      const dueText = t.due ? `due ${t.due}` : "no due date";
+      return `${i + 1}. ${t.text} [${statusText}, ${dueText}]`;
+    })
+    .join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You are an AI project manager. Given a task list with due dates and status, write a " +
+        "brief status report (2-4 short sentences): call out what's at risk (overdue items, " +
+        "tasks with no due date, how much is left), and give a quick on-track / off-track read. " +
+        "Be concrete and practical.",
+      prompt: `Today is ${today}.\nTasks:\n${lines}`,
+      schema: {
+        type: "object",
+        properties: { summary: { type: "string" } },
+        required: ["summary"],
+      },
+    });
+    res.json({ summary: typeof result.summary === "string" ? result.summary : "" });
   } catch (err) {
     handleAiError(err, res);
   }

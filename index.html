@@ -44,13 +44,23 @@
 
     <p id="ai-status" class="ai-status" hidden></p>
 
+    <div class="view-bar">
+      <select id="project-filter" class="project-filter">
+        <option value="all">All projects</option>
+      </select>
+      <button id="view-toggle" type="button">📋 Board view</button>
+    </div>
+
     <div class="list-tools">
       <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
       <button id="ai-score-btn" type="button">📊 Score</button>
       <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
+      <button id="ai-organize-btn" type="button">📥 Organize</button>
+      <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
     </div>
 
     <ul id="task-list" class="task-list"></ul>
+    <div id="board" class="board" hidden></div>
 
     <div class="list-footer">
       <span id="task-counter" class="task-counter"></span>

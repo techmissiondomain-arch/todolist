@@ -17,6 +17,9 @@ A simple to-do list app — now with **AI task generation**. Add tasks by hand, 
 - **📊 AI: score each task 0–100** by priority, then sort
 - **🗓️ AI: plan your week** — sort tasks into Today / This week / Later
 - **💬 AI: ask about your tasks** — e.g. "What should I do first?"
+- **📥 AI: organize your inbox** — auto-assign a project, priority, and due date
+- **🔮 AI: project check** — a quick risk / on-track status report
+- **📋 Kanban board view** — To do / In progress / Done, with a project filter
 
 ## How to run
 
