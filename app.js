@@ -1,4 +1,6 @@
 // A small to-do list that saves your tasks in the browser.
+// Each task looks like:
+//   { text, done, due?, score?, schedule?, subtasks?: [{ text, done }] }
 
 const STORAGE_KEY = "todolist.tasks";
 
@@ -31,6 +33,14 @@ function isOverdue(task) {
   return task.due && !task.done && task.due < todayString();
 }
 
+function scoreLevel(score) {
+  if (score >= 67) return "high";
+  if (score >= 34) return "mid";
+  return "low";
+}
+
+const SCHEDULE_LABELS = { today: "Today", this_week: "This week", later: "Later" };
+
 // Draw the whole list from scratch based on the current tasks.
 function render() {
   list.innerHTML = "";
@@ -40,6 +50,9 @@ function render() {
     if (task.done) {
       li.classList.add("done");
     }
+
+    const row = document.createElement("div");
+    row.className = "task-row";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -51,7 +64,26 @@ function render() {
     label.className = "task-text";
     label.textContent = task.text;
     label.title = "Click to edit";
-    label.addEventListener("click", () => startEditing(index, li, label));
+    label.addEventListener("click", () => startEditing(index, row, label));
+
+    row.append(checkbox, label);
+
+    // Priority score badge (after AI scoring).
+    if (typeof task.score === "number") {
+      const badge = document.createElement("span");
+      badge.className = `badge score ${scoreLevel(task.score)}`;
+      badge.textContent = task.score;
+      badge.title = "AI priority score";
+      row.appendChild(badge);
+    }
+
+    // Schedule badge (after AI scheduling).
+    if (task.schedule && SCHEDULE_LABELS[task.schedule]) {
+      const badge = document.createElement("span");
+      badge.className = `badge schedule ${task.schedule}`;
+      badge.textContent = SCHEDULE_LABELS[task.schedule];
+      row.appendChild(badge);
+    }
 
     // Due date — pick a day; shows red when overdue and not done.
     const due = document.createElement("input");
@@ -69,20 +101,68 @@ function render() {
     deleteBtn.setAttribute("aria-label", "Delete task");
     deleteBtn.addEventListener("click", () => deleteTask(index));
 
-    li.append(checkbox, label, due, deleteBtn);
+    row.append(due, deleteBtn);
+    li.appendChild(row);
+
+    // Subtasks (steps) under the task.
+    li.appendChild(renderSubtasks(task, index));
+
     list.appendChild(li);
   });
 
   updateProgress();
 }
 
+// Build the subtasks block for one task: existing steps + an "add step" box.
+function renderSubtasks(task, index) {
+  const wrap = document.createElement("div");
+  wrap.className = "subtasks";
+
+  const subs = task.subtasks || [];
+  subs.forEach((sub, subIndex) => {
+    const subRow = document.createElement("div");
+    subRow.className = "subtask-row" + (sub.done ? " done" : "");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = sub.done;
+    cb.addEventListener("change", () => toggleSubtask(index, subIndex));
+
+    const text = document.createElement("span");
+    text.className = "subtask-text";
+    text.textContent = sub.text;
+
+    const del = document.createElement("button");
+    del.className = "delete-sub";
+    del.textContent = "×";
+    del.setAttribute("aria-label", "Delete step");
+    del.addEventListener("click", () => deleteSubtask(index, subIndex));
+
+    subRow.append(cb, text, del);
+    wrap.appendChild(subRow);
+  });
+
+  const adder = document.createElement("input");
+  adder.type = "text";
+  adder.className = "add-subtask";
+  adder.placeholder = "+ add a step";
+  adder.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && adder.value.trim() !== "") {
+      addSubtask(index, adder.value.trim());
+    }
+  });
+  wrap.appendChild(adder);
+
+  return wrap;
+}
+
 // Swap a task's label for a text box so the user can rename it.
-function startEditing(index, li, label) {
+function startEditing(index, row, label) {
   const editor = document.createElement("input");
   editor.type = "text";
   editor.className = "edit-input";
   editor.value = tasks[index].text;
-  li.replaceChild(editor, label);
+  row.replaceChild(editor, label);
   editor.focus();
   editor.select();
 
@@ -144,6 +224,29 @@ function deleteTask(index) {
   render();
 }
 
+// --- Subtasks --------------------------------------------------------------
+function addSubtask(taskIndex, text) {
+  if (!tasks[taskIndex].subtasks) {
+    tasks[taskIndex].subtasks = [];
+  }
+  tasks[taskIndex].subtasks.push({ text: text, done: false });
+  saveTasks();
+  render();
+}
+
+function toggleSubtask(taskIndex, subIndex) {
+  const sub = tasks[taskIndex].subtasks[subIndex];
+  sub.done = !sub.done;
+  saveTasks();
+  render();
+}
+
+function deleteSubtask(taskIndex, subIndex) {
+  tasks[taskIndex].subtasks.splice(subIndex, 1);
+  saveTasks();
+  render();
+}
+
 clearCompletedBtn.addEventListener("click", clearCompleted);
 
 form.addEventListener("submit", (event) => {
@@ -157,12 +260,7 @@ form.addEventListener("submit", (event) => {
   input.focus();
 });
 
-// --- AI task generation ---------------------------------------------------
-// Send the user's goal to our server, which asks Claude to break it into
-// tasks, then add each returned task to the list.
-
-const goalInput = document.getElementById("ai-goal-input");
-const generateBtn = document.getElementById("ai-generate-btn");
+// --- AI helpers ------------------------------------------------------------
 const status = document.getElementById("ai-status");
 
 function showStatus(message) {
@@ -170,31 +268,44 @@ function showStatus(message) {
   status.hidden = !message;
 }
 
+// POST a JSON body to one of our /api endpoints and return the parsed result,
+// or null if it failed (after showing a friendly status message).
+async function callApi(path, body) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    showStatus(data.error || "Something went wrong.");
+    return null;
+  }
+  return data;
+}
+
+function taskTexts() {
+  return tasks.map((task) => task.text);
+}
+
+// --- AI: generate tasks from a goal ---------------------------------------
+const goalInput = document.getElementById("ai-goal-input");
+const generateBtn = document.getElementById("ai-generate-btn");
+
 async function generateTasks() {
   const goal = goalInput.value.trim();
   if (goal === "") {
     return;
   }
-
   generateBtn.disabled = true;
   showStatus("Thinking…");
-
   try {
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal: goal }),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      showStatus(data.error || "Something went wrong.");
-      return;
+    const data = await callApi("/api/generate", { goal: goal });
+    if (data) {
+      data.tasks.forEach((task) => addTask(task));
+      goalInput.value = "";
+      showStatus(`Added ${data.tasks.length} tasks.`);
     }
-
-    data.tasks.forEach((task) => addTask(task));
-    goalInput.value = "";
-    showStatus(`Added ${data.tasks.length} tasks.`);
   } catch (err) {
     showStatus("Couldn't reach the server. Is it running?");
   } finally {
@@ -204,15 +315,10 @@ async function generateTasks() {
 
 generateBtn.addEventListener("click", generateTasks);
 goalInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    generateTasks();
-  }
+  if (event.key === "Enter") generateTasks();
 });
 
-// --- AI prioritization ----------------------------------------------------
-// Send the current task list to our server, which asks the AI for the best
-// order, then reorder the list to match.
-
+// --- AI: prioritize (reorder) ---------------------------------------------
 const prioritizeBtn = document.getElementById("ai-prioritize-btn");
 
 async function prioritizeTasks() {
@@ -220,28 +326,16 @@ async function prioritizeTasks() {
     showStatus("Add at least two tasks first.");
     return;
   }
-
   prioritizeBtn.disabled = true;
   showStatus("Prioritizing…");
-
   try {
-    const response = await fetch("/api/prioritize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tasks: tasks.map((task) => task.text) }),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      showStatus(data.error || "Something went wrong.");
-      return;
+    const data = await callApi("/api/prioritize", { tasks: taskTexts() });
+    if (data) {
+      tasks = data.order.map((position) => tasks[position]);
+      saveTasks();
+      render();
+      showStatus("Reordered — most important first.");
     }
-
-    // Reorder the tasks using the order the AI returned (a list of positions).
-    tasks = data.order.map((position) => tasks[position]);
-    saveTasks();
-    render();
-    showStatus("Reordered — most important first.");
   } catch (err) {
     showStatus("Couldn't reach the server. Is it running?");
   } finally {
@@ -250,6 +344,105 @@ async function prioritizeTasks() {
 }
 
 prioritizeBtn.addEventListener("click", prioritizeTasks);
+
+// --- AI: score each task 0–100, then sort by score ------------------------
+const scoreBtn = document.getElementById("ai-score-btn");
+
+async function scoreTasks() {
+  if (tasks.length < 1) {
+    showStatus("Add a task first.");
+    return;
+  }
+  scoreBtn.disabled = true;
+  showStatus("Scoring…");
+  try {
+    const data = await callApi("/api/score", { tasks: taskTexts() });
+    if (data) {
+      data.scores.forEach((score, i) => {
+        tasks[i].score = score;
+      });
+      tasks.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+      saveTasks();
+      render();
+      showStatus("Scored and sorted by priority.");
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    scoreBtn.disabled = false;
+  }
+}
+
+scoreBtn.addEventListener("click", scoreTasks);
+
+// --- AI: schedule into Today / This week / Later --------------------------
+const scheduleBtn = document.getElementById("ai-schedule-btn");
+const SCHEDULE_ORDER = { today: 0, this_week: 1, later: 2 };
+
+async function scheduleTasks() {
+  if (tasks.length < 1) {
+    showStatus("Add a task first.");
+    return;
+  }
+  scheduleBtn.disabled = true;
+  showStatus("Planning…");
+  try {
+    const data = await callApi("/api/schedule", { tasks: taskTexts() });
+    if (data) {
+      data.buckets.forEach((bucket, i) => {
+        tasks[i].schedule = bucket;
+      });
+      tasks.sort(
+        (a, b) => (SCHEDULE_ORDER[a.schedule] ?? 3) - (SCHEDULE_ORDER[b.schedule] ?? 3)
+      );
+      saveTasks();
+      render();
+      showStatus("Planned — Today first, then this week, then later.");
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    scheduleBtn.disabled = false;
+  }
+}
+
+scheduleBtn.addEventListener("click", scheduleTasks);
+
+// --- AI: ask a question about the tasks -----------------------------------
+const askInput = document.getElementById("ai-ask-input");
+const askBtn = document.getElementById("ai-ask-btn");
+const answerEl = document.getElementById("ai-answer");
+
+function showAnswer(message) {
+  answerEl.textContent = message;
+  answerEl.hidden = !message;
+}
+
+async function askTasks() {
+  const question = askInput.value.trim();
+  if (question === "") {
+    return;
+  }
+  askBtn.disabled = true;
+  showAnswer("");
+  showStatus("Thinking…");
+  try {
+    const data = await callApi("/api/ask", { question: question, tasks: taskTexts() });
+    if (data) {
+      showStatus("");
+      showAnswer(data.answer || "No answer.");
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    askBtn.disabled = false;
+  }
+}
+
+askBtn.addEventListener("click", askTasks);
+askInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") askTasks();
+});
 
 // Show whatever was saved when the page first loads.
 render();

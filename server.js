@@ -1,9 +1,11 @@
-// A tiny web server that does three jobs:
-//   1. Serves the to-do app (index.html, styles.css, app.js)
-//   2. /api/generate  — turn a goal into a checklist of tasks
-//   3. /api/prioritize — reorder existing tasks, most important first
+// A tiny web server that serves the to-do app and provides AI endpoints:
+//   /api/generate   — turn a goal into a checklist of tasks
+//   /api/prioritize — reorder existing tasks, most important first
+//   /api/score      — score each task's priority 0–100
+//   /api/schedule   — sort tasks into Today / This week / Later
+//   /api/ask        — answer a question about the task list
 //
-// Both AI endpoints use Google Gemini's free API. Your key lives here on the
+// All AI endpoints use Google Gemini's free API. Your key lives here on the
 // server (loaded from .env), never in the browser.
 
 import express from "express";
@@ -139,6 +141,113 @@ app.post("/api/prioritize", async (req, res) => {
       return res.status(500).json({ error: "The AI returned an unexpected order — please try again." });
     }
     res.json({ order });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Score each task's priority (0–100) -----------------------------------
+app.post("/api/score", async (req, res) => {
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  if (tasks.length < 1) {
+    return res.status(400).json({ error: "Add a task first." });
+  }
+
+  const numbered = tasks.map((t, i) => `${i}: ${t}`).join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You score the priority of each to-do item from 0 to 100, where 100 is the most " +
+        "important and urgent and 0 is trivial. Weigh urgency, impact, and whether other " +
+        "tasks depend on it. Return one integer score per task, in the SAME order as given. " +
+        "Return exactly one score per task — no more, no fewer.",
+      prompt: `Tasks:\n${numbered}`,
+      schema: {
+        type: "object",
+        properties: { scores: { type: "array", items: { type: "integer" } } },
+        required: ["scores"],
+      },
+    });
+
+    const raw = Array.isArray(result.scores) ? result.scores : [];
+    if (raw.length !== tasks.length) {
+      return res.status(500).json({ error: "The AI returned the wrong number of scores — please try again." });
+    }
+    // Clamp every score into 0–100 to be safe.
+    const scores = raw.map((n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0))));
+    res.json({ scores });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Schedule tasks into Today / This week / Later ------------------------
+app.post("/api/schedule", async (req, res) => {
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  if (tasks.length < 1) {
+    return res.status(400).json({ error: "Add a task first." });
+  }
+
+  const numbered = tasks.map((t, i) => `${i}: ${t}`).join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You plan when to do each to-do item. Put the most urgent and foundational tasks in " +
+        "'today', near-term tasks in 'this_week', and the rest in 'later'. Return one bucket " +
+        "per task, in the SAME order as given. Each value must be exactly one of: " +
+        "\"today\", \"this_week\", \"later\". Return exactly one bucket per task.",
+      prompt: `Tasks:\n${numbered}`,
+      schema: {
+        type: "object",
+        properties: {
+          buckets: {
+            type: "array",
+            items: { type: "string", enum: ["today", "this_week", "later"] },
+          },
+        },
+        required: ["buckets"],
+      },
+    });
+
+    const buckets = Array.isArray(result.buckets) ? result.buckets : [];
+    const allowed = new Set(["today", "this_week", "later"]);
+    if (buckets.length !== tasks.length || !buckets.every((b) => allowed.has(b))) {
+      return res.status(500).json({ error: "The AI returned an unexpected schedule — please try again." });
+    }
+    res.json({ buckets });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Ask a question about the task list -----------------------------------
+app.post("/api/ask", async (req, res) => {
+  const question = (req.body?.question || "").trim();
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  if (!question) {
+    return res.status(400).json({ error: "Type a question first." });
+  }
+
+  const list = tasks.length
+    ? tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+    : "(the list is empty)";
+
+  try {
+    const result = await askGemini({
+      system:
+        "You are a helpful productivity assistant. Answer the user's question about their " +
+        "to-do list briefly and practically — at most 3 short sentences. Base your answer " +
+        "only on the tasks provided. If the list is empty, say so.",
+      prompt: `My tasks:\n${list}\n\nQuestion: ${question}`,
+      schema: {
+        type: "object",
+        properties: { answer: { type: "string" } },
+        required: ["answer"],
+      },
+    });
+    res.json({ answer: typeof result.answer === "string" ? result.answer : "" });
   } catch (err) {
     handleAiError(err, res);
   }

@@ -11,8 +11,12 @@ A simple to-do list app — now with **AI task generation**. Add tasks by hand, 
 - Delete a task, or clear all completed at once
 - See your progress ("X of Y done")
 - Tasks are saved automatically using your browser's local storage
+- Break a task into **subtasks** (steps)
 - **✨ AI: turn a goal into a list of tasks** (powered by Google Gemini — free)
 - **🔼 AI: prioritize your list** — reorder tasks so the most important come first
+- **📊 AI: score each task 0–100** by priority, then sort
+- **🗓️ AI: plan your week** — sort tasks into Today / This week / Later
+- **💬 AI: ask about your tasks** — e.g. "What should I do first?"
 
 ## How to run
 

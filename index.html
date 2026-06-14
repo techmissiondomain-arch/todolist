@@ -30,10 +30,24 @@
       />
       <button id="ai-generate-btn" type="button">✨ Generate</button>
     </div>
+
+    <div class="ai-ask">
+      <input
+        id="ai-ask-input"
+        type="text"
+        placeholder="Ask about your tasks, e.g. What should I do first?"
+        autocomplete="off"
+      />
+      <button id="ai-ask-btn" type="button">Ask</button>
+    </div>
+    <p id="ai-answer" class="ai-answer" hidden></p>
+
     <p id="ai-status" class="ai-status" hidden></p>
 
     <div class="list-tools">
-      <button id="ai-prioritize-btn" type="button">🔼 Prioritize with AI</button>
+      <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
+      <button id="ai-score-btn" type="button">📊 Score</button>
+      <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
     </div>
 
     <ul id="task-list" class="task-list"></ul>
