@@ -10,8 +10,10 @@ const list = document.getElementById("task-list");
 const boardEl = document.getElementById("board");
 const counter = document.getElementById("task-counter");
 const clearCompletedBtn = document.getElementById("clear-completed-btn");
-const projectFilter = document.getElementById("project-filter");
-const viewToggle = document.getElementById("view-toggle");
+const calendarEl = document.getElementById("calendar");
+const viewNav = document.querySelectorAll(".nav-item[data-view]");
+const projectNav = document.getElementById("project-nav");
+const viewTitle = document.getElementById("view-title");
 
 // Load any previously saved tasks, or start with an empty list.
 let tasks = loadTasks();
@@ -96,17 +98,23 @@ function appendBadges(container, task) {
 
 // --- Rendering ------------------------------------------------------------
 function render() {
-  updateProjectFilter();
+  updateProjectNav();
+  viewNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
+  viewTitle.textContent = activeProject === "all" ? "All tasks" : activeProject;
+  list.hidden = view !== "list";
+  boardEl.hidden = view !== "board";
+  calendarEl.hidden = view !== "calendar";
   if (view === "list") {
-    boardEl.hidden = true;
-    list.hidden = false;
     renderList();
-  } else {
-    list.hidden = true;
-    boardEl.hidden = false;
+  } else if (view === "board") {
     renderBoard();
+  } else {
+    renderCalendar();
   }
   updateProgress();
+  if (!statsPanel.hidden) {
+    renderStats();
+  }
 }
 
 function renderList() {
@@ -146,13 +154,20 @@ function renderList() {
     }
     due.addEventListener("change", () => setDueDate(index, due.value));
 
+    const repeatBtn = document.createElement("button");
+    const repeating = task.repeat && task.repeat !== "none";
+    repeatBtn.className = "repeat-btn" + (repeating ? " active" : "");
+    repeatBtn.textContent = "🔁";
+    repeatBtn.title = "Repeat: " + (repeating ? task.repeat : "off") + " (click to change)";
+    repeatBtn.addEventListener("click", () => cycleRepeat(index));
+
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "delete";
     deleteBtn.textContent = "×";
     deleteBtn.setAttribute("aria-label", "Delete task");
     deleteBtn.addEventListener("click", () => deleteTask(index));
 
-    row.append(due, deleteBtn);
+    row.append(due, repeatBtn, deleteBtn);
     li.appendChild(row);
     li.appendChild(renderSubtasks(task, index));
     list.appendChild(li);
@@ -193,6 +208,12 @@ function buildCard(task, index) {
   const badges = document.createElement("div");
   badges.className = "card-badges";
   appendBadges(badges, task);
+  if (task.repeat && task.repeat !== "none") {
+    const rb = document.createElement("span");
+    rb.className = "badge repeat";
+    rb.textContent = REPEAT_LABELS[task.repeat] || "🔁";
+    badges.appendChild(rb);
+  }
   if (badges.children.length) {
     card.appendChild(badges);
   }
@@ -266,27 +287,38 @@ function renderSubtasks(task, index) {
   return wrap;
 }
 
-// Rebuild the project filter dropdown from the projects currently in use.
-function updateProjectFilter() {
+// Rebuild the sidebar project list from the projects currently in use.
+function updateProjectNav() {
   const projects = [...new Set(tasks.map((t) => t.project).filter(Boolean))].sort();
   if (activeProject !== "all" && !projects.includes(activeProject)) {
     activeProject = "all";
   }
 
-  projectFilter.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "all";
-  allOption.textContent = "All projects";
-  projectFilter.appendChild(allOption);
+  projectNav.innerHTML = "";
 
+  function addItem(value, label, count) {
+    const btn = document.createElement("button");
+    btn.className = "nav-item" + (activeProject === value ? " active" : "");
+
+    const name = document.createElement("span");
+    name.textContent = label;
+
+    const badge = document.createElement("span");
+    badge.className = "nav-count";
+    badge.textContent = count;
+
+    btn.append(name, badge);
+    btn.addEventListener("click", () => {
+      activeProject = value;
+      render();
+    });
+    projectNav.appendChild(btn);
+  }
+
+  addItem("all", "All tasks", tasks.length);
   projects.forEach((project) => {
-    const option = document.createElement("option");
-    option.value = project;
-    option.textContent = project;
-    projectFilter.appendChild(option);
+    addItem(project, project, tasks.filter((t) => t.project === project).length);
   });
-
-  projectFilter.value = activeProject;
 }
 
 // Swap a task's label for a text box so the user can rename it.
@@ -346,9 +378,23 @@ function addTask(text) {
 }
 
 function toggleTask(index) {
-  const nowDone = !tasks[index].done;
-  tasks[index].done = nowDone;
-  tasks[index].status = nowDone ? "done" : "todo";
+  const task = tasks[index];
+  const nowDone = !task.done;
+  task.done = nowDone;
+  task.status = nowDone ? "done" : "todo";
+
+  // When a recurring task is completed, queue up its next occurrence.
+  if (nowDone && task.repeat && task.repeat !== "none") {
+    tasks.push({
+      text: task.text,
+      done: false,
+      status: "todo",
+      repeat: task.repeat,
+      project: task.project || null,
+      due: advanceDate(task.due || todayString(), task.repeat),
+    });
+  }
+
   saveTasks();
   render();
 }
@@ -383,17 +429,12 @@ function deleteSubtask(taskIndex, subIndex) {
 }
 
 // --- View + filter controls -----------------------------------------------
-function toggleView() {
-  view = view === "list" ? "board" : "list";
-  viewToggle.textContent = view === "list" ? "📋 Board view" : "📃 List view";
-  render();
-}
-
 clearCompletedBtn.addEventListener("click", clearCompleted);
-viewToggle.addEventListener("click", toggleView);
-projectFilter.addEventListener("change", () => {
-  activeProject = projectFilter.value;
-  render();
+viewNav.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    view = btn.dataset.view;
+    render();
+  });
 });
 
 form.addEventListener("submit", (event) => {
@@ -649,6 +690,227 @@ async function projectCheck() {
 }
 
 projectcheckBtn.addEventListener("click", projectCheck);
+
+// --- Recurring tasks -------------------------------------------------------
+const REPEATS = ["none", "daily", "weekly", "monthly"];
+const REPEAT_LABELS = { daily: "🔁 Daily", weekly: "🔁 Weekly", monthly: "🔁 Monthly" };
+
+function cycleRepeat(index) {
+  const current = REPEATS.indexOf(tasks[index].repeat || "none");
+  const next = REPEATS[(current + 1) % REPEATS.length];
+  tasks[index].repeat = next === "none" ? null : next;
+  saveTasks();
+  render();
+}
+
+// Return a YYYY-MM-DD string advanced by one repeat period from the given date.
+function advanceDate(dateStr, repeat) {
+  const base = dateStr ? new Date(dateStr + "T00:00:00") : new Date();
+  if (repeat === "daily") base.setDate(base.getDate() + 1);
+  else if (repeat === "weekly") base.setDate(base.getDate() + 7);
+  else if (repeat === "monthly") base.setMonth(base.getMonth() + 1);
+  const offsetMs = base.getTimezoneOffset() * 60000;
+  return new Date(base.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+// --- Calendar view ---------------------------------------------------------
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendar() {
+  calendarEl.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "cal-header";
+
+  const prev = document.createElement("button");
+  prev.textContent = "◀";
+  prev.title = "Previous month";
+  prev.addEventListener("click", () => {
+    calMonth -= 1;
+    if (calMonth < 0) { calMonth = 11; calYear -= 1; }
+    render();
+  });
+
+  const title = document.createElement("span");
+  title.className = "cal-title";
+  title.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
+
+  const next = document.createElement("button");
+  next.textContent = "▶";
+  next.title = "Next month";
+  next.addEventListener("click", () => {
+    calMonth += 1;
+    if (calMonth > 11) { calMonth = 0; calYear += 1; }
+    render();
+  });
+
+  header.append(prev, title, next);
+  calendarEl.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+
+  WEEKDAYS.forEach((wd) => {
+    const cell = document.createElement("div");
+    cell.className = "cal-weekday";
+    cell.textContent = wd;
+    grid.appendChild(cell);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = todayString();
+
+  for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement("div");
+    blank.className = "cal-day empty";
+    grid.appendChild(blank);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "cal-day" + (dateStr === today ? " today" : "");
+
+    const num = document.createElement("div");
+    num.className = "cal-daynum";
+    num.textContent = day;
+    cell.appendChild(num);
+
+    tasks.forEach((task) => {
+      if (!matchesFilter(task) || task.due !== dateStr) return;
+      const item = document.createElement("div");
+      item.className = "cal-task" + (task.done ? " done" : "");
+      item.textContent = task.text;
+      item.title = task.text;
+      cell.appendChild(item);
+    });
+
+    grid.appendChild(cell);
+  }
+
+  calendarEl.appendChild(grid);
+}
+
+// --- Stats panel -----------------------------------------------------------
+const statsPanel = document.getElementById("stats-panel");
+const statsToggle = document.getElementById("stats-toggle");
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
+}
+
+function renderStats() {
+  const total = tasks.length;
+  const done = tasks.filter((t) => t.done).length;
+  const open = total - done;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const overdue = tasks.filter((t) => isOverdue(t)).length;
+  const noDue = tasks.filter((t) => !t.due && !t.done).length;
+
+  const byProject = {};
+  tasks.forEach((t) => {
+    const key = t.project || "No project";
+    byProject[key] = (byProject[key] || 0) + 1;
+  });
+  const projectRows = Object.entries(byProject)
+    .sort((a, b) => b[1] - a[1])
+    .map(([p, n]) => `<li><span>${escapeHtml(p)}</span><span>${n}</span></li>`)
+    .join("");
+
+  statsPanel.innerHTML = `
+    <div class="stat-big">${pct}% complete</div>
+    <div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+    <ul class="stat-list">
+      <li><span>Total tasks</span><span>${total}</span></li>
+      <li><span>Done</span><span>${done}</span></li>
+      <li><span>Open</span><span>${open}</span></li>
+      <li><span>Overdue</span><span>${overdue}</span></li>
+      <li><span>No due date</span><span>${noDue}</span></li>
+    </ul>
+    <div class="stat-subtitle">By project</div>
+    <ul class="stat-list">${projectRows || "<li><span>No tasks yet</span><span></span></li>"}</ul>
+  `;
+}
+
+statsToggle.addEventListener("click", () => {
+  statsPanel.hidden = !statsPanel.hidden;
+  if (!statsPanel.hidden) renderStats();
+});
+
+// --- Notes (knowledge base) ------------------------------------------------
+const NOTES_KEY = "todolist.notes";
+let notes = loadNotes();
+const notesPanel = document.getElementById("notes-panel");
+const notesToggle = document.getElementById("notes-toggle");
+const notesList = document.getElementById("notes-list");
+const noteTitle = document.getElementById("note-title");
+const noteBody = document.getElementById("note-body");
+const noteAdd = document.getElementById("note-add");
+
+function loadNotes() {
+  const saved = localStorage.getItem(NOTES_KEY);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveNotes() {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
+
+function renderNotes() {
+  notesList.innerHTML = "";
+  notes.forEach((note, index) => {
+    const li = document.createElement("li");
+    li.className = "note";
+
+    const heading = document.createElement("div");
+    heading.className = "note-heading";
+    heading.textContent = note.title || "(untitled)";
+
+    const body = document.createElement("div");
+    body.className = "note-text";
+    body.textContent = note.body || "";
+
+    const del = document.createElement("button");
+    del.className = "delete";
+    del.textContent = "×";
+    del.title = "Delete note";
+    del.addEventListener("click", () => {
+      notes.splice(index, 1);
+      saveNotes();
+      renderNotes();
+    });
+
+    li.append(del, heading, body);
+    notesList.appendChild(li);
+  });
+}
+
+function addNote() {
+  const title = noteTitle.value.trim();
+  const body = noteBody.value.trim();
+  if (title === "" && body === "") return;
+  notes.push({ title: title, body: body });
+  saveNotes();
+  noteTitle.value = "";
+  noteBody.value = "";
+  renderNotes();
+}
+
+noteAdd.addEventListener("click", addNote);
+notesToggle.addEventListener("click", () => {
+  notesPanel.hidden = !notesPanel.hidden;
+  if (!notesPanel.hidden) renderNotes();
+});
 
 // Show whatever was saved when the page first loads.
 render();

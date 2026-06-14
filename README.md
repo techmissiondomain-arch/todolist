@@ -1,6 +1,6 @@
-# My To-Do List
+# TaskFlow
 
-A simple to-do list app — now with **AI task generation**. Add tasks by hand, or describe a goal (like "Plan a birthday party") and let AI break it into a checklist for you. Powered by Google Gemini's free API. Your tasks are saved automatically in your browser.
+An AI-powered task manager with a clean dashboard (sidebar + List / Board / Calendar views). Add tasks by hand or describe a goal and let AI plan, prioritize, schedule, and organize your work. Powered by Google Gemini's free API. Your tasks are saved automatically in your browser.
 
 ## Features
 

@@ -3,72 +3,102 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My To-Do List</title>
+  <title>TaskFlow — AI To-Do</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app">
-    <h1>My To-Do List</h1>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">✓</span> TaskFlow</div>
 
-    <form id="new-task-form" class="new-task">
-      <input
-        id="new-task-input"
-        type="text"
-        placeholder="What do you need to do?"
-        autocomplete="off"
-        required
-      />
-      <button type="submit">Add</button>
-    </form>
+      <div class="nav-section">Views</div>
+      <nav class="nav">
+        <button class="nav-item" data-view="list"><span>📃 List</span></button>
+        <button class="nav-item" data-view="board"><span>📋 Board</span></button>
+        <button class="nav-item" data-view="calendar"><span>📅 Calendar</span></button>
+      </nav>
 
-    <div class="ai-generate">
-      <input
-        id="ai-goal-input"
-        type="text"
-        placeholder="Or describe a goal, e.g. Plan a birthday party"
-        autocomplete="off"
-      />
-      <button id="ai-generate-btn" type="button">✨ Generate</button>
-    </div>
+      <div class="nav-section">Insights</div>
+      <nav class="nav">
+        <button id="stats-toggle" class="nav-item"><span>📈 Stats</span></button>
+        <button id="notes-toggle" class="nav-item"><span>📝 Notes</span></button>
+      </nav>
 
-    <div class="ai-ask">
-      <input
-        id="ai-ask-input"
-        type="text"
-        placeholder="Ask about your tasks, e.g. What should I do first?"
-        autocomplete="off"
-      />
-      <button id="ai-ask-btn" type="button">Ask</button>
-    </div>
-    <p id="ai-answer" class="ai-answer" hidden></p>
+      <div class="nav-section">Projects</div>
+      <nav id="project-nav" class="nav project-nav"></nav>
+    </aside>
 
-    <p id="ai-status" class="ai-status" hidden></p>
+    <main class="main">
+      <div class="main-inner">
+        <header class="main-header">
+          <h1 id="view-title">All tasks</h1>
+          <span id="task-counter" class="task-counter"></span>
+        </header>
 
-    <div class="view-bar">
-      <select id="project-filter" class="project-filter">
-        <option value="all">All projects</option>
-      </select>
-      <button id="view-toggle" type="button">📋 Board view</button>
-    </div>
+        <form id="new-task-form" class="new-task">
+          <input
+            id="new-task-input"
+            type="text"
+            placeholder="What do you need to do?"
+            autocomplete="off"
+            required
+          />
+          <button type="submit">Add</button>
+        </form>
 
-    <div class="list-tools">
-      <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
-      <button id="ai-score-btn" type="button">📊 Score</button>
-      <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
-      <button id="ai-organize-btn" type="button">📥 Organize</button>
-      <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
-    </div>
+        <div class="ai-generate">
+          <input
+            id="ai-goal-input"
+            type="text"
+            placeholder="Or describe a goal, e.g. Plan a birthday party"
+            autocomplete="off"
+          />
+          <button id="ai-generate-btn" type="button">✨ Generate</button>
+        </div>
 
-    <ul id="task-list" class="task-list"></ul>
-    <div id="board" class="board" hidden></div>
+        <div class="ai-ask">
+          <input
+            id="ai-ask-input"
+            type="text"
+            placeholder="Ask about your tasks, e.g. What should I do first?"
+            autocomplete="off"
+          />
+          <button id="ai-ask-btn" type="button">Ask</button>
+        </div>
+        <p id="ai-answer" class="ai-answer" hidden></p>
+        <p id="ai-status" class="ai-status" hidden></p>
 
-    <div class="list-footer">
-      <span id="task-counter" class="task-counter"></span>
-      <button id="clear-completed-btn" class="clear-completed" type="button" hidden>
-        Clear completed
-      </button>
-    </div>
-  </main>
+        <div class="list-tools">
+          <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
+          <button id="ai-score-btn" type="button">📊 Score</button>
+          <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
+          <button id="ai-organize-btn" type="button">📥 Organize</button>
+          <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
+        </div>
+
+        <div id="stats-panel" class="panel" hidden></div>
+
+        <div id="notes-panel" class="panel" hidden>
+          <div class="note-form">
+            <input id="note-title" type="text" placeholder="Note title" autocomplete="off" />
+            <textarea id="note-body" placeholder="Write a note… (ideas, links, plans)"></textarea>
+            <button id="note-add" type="button">Add note</button>
+          </div>
+          <ul id="notes-list" class="notes-list"></ul>
+        </div>
+
+        <ul id="task-list" class="task-list"></ul>
+        <div id="board" class="board" hidden></div>
+        <div id="calendar" class="calendar" hidden></div>
+
+        <div class="list-footer">
+          <button id="clear-completed-btn" class="clear-completed" type="button" hidden>
+            Clear completed
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script src="app.js"></script>
 </body>
