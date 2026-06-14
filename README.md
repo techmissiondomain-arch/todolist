@@ -6,7 +6,10 @@ A simple to-do list app — now with **AI task generation**. Add tasks by hand, 
 
 - Add a task
 - Mark a task as done (and unmark it)
-- Delete a task
+- Edit a task (click its text to rename)
+- Give a task a due date (overdue tasks turn red)
+- Delete a task, or clear all completed at once
+- See your progress ("X of Y done")
 - Tasks are saved automatically using your browser's local storage
 - **✨ AI: turn a goal into a list of tasks** (powered by Google Gemini — free)
 - **🔼 AI: prioritize your list** — reorder tasks so the most important come first

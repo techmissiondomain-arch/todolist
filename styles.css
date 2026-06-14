@@ -151,6 +151,56 @@ h1 {
   flex: 1;
 }
 
+.task-text {
+  cursor: pointer;
+}
+
+.edit-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.due-date {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.due-date.overdue {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  min-height: 24px;
+}
+
+.task-counter {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.clear-completed {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.clear-completed:hover {
+  text-decoration: underline;
+}
+
 .task-list .delete {
   border: none;
   background: transparent;
