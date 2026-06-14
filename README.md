@@ -8,6 +8,7 @@ A simple to-do list app built with plain HTML, CSS, and JavaScript. No framework
 - Mark a task as done (and unmark it)
 - Delete a task
 - Tasks are saved automatically using your browser's local storage
+- Shows a friendly hint when your list is empty
 
 ## How to run
 

@@ -77,6 +77,14 @@ h1 {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.task-list .empty-state {
+  justify-content: center;
+  color: var(--muted);
+  font-style: italic;
+  box-shadow: none;
+  background: transparent;
+}
+
 .task-list li.done span {
   text-decoration: line-through;
   color: var(--muted);

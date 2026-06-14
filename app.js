@@ -22,6 +22,15 @@ function saveTasks() {
 function render() {
   list.innerHTML = "";
 
+  // When there's nothing to do yet, show a friendly hint instead of a blank space.
+  if (tasks.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty-state";
+    empty.textContent = "No tasks yet — add one above!";
+    list.appendChild(empty);
+    return;
+  }
+
   tasks.forEach((task, index) => {
     const li = document.createElement("li");
     if (task.done) {
