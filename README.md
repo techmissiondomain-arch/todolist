@@ -9,6 +9,7 @@ A simple to-do list app — now with **AI task generation**. Add tasks by hand, 
 - Delete a task
 - Tasks are saved automatically using your browser's local storage
 - **✨ AI: turn a goal into a list of tasks** (powered by Google Gemini — free)
+- **🔼 AI: prioritize your list** — reorder tasks so the most important come first
 
 ## How to run
 

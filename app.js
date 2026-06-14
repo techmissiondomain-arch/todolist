@@ -128,5 +128,47 @@ goalInput.addEventListener("keydown", (event) => {
   }
 });
 
+// --- AI prioritization ----------------------------------------------------
+// Send the current task list to our server, which asks the AI for the best
+// order, then reorder the list to match.
+
+const prioritizeBtn = document.getElementById("ai-prioritize-btn");
+
+async function prioritizeTasks() {
+  if (tasks.length < 2) {
+    showStatus("Add at least two tasks first.");
+    return;
+  }
+
+  prioritizeBtn.disabled = true;
+  showStatus("Prioritizing…");
+
+  try {
+    const response = await fetch("/api/prioritize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tasks: tasks.map((task) => task.text) }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      showStatus(data.error || "Something went wrong.");
+      return;
+    }
+
+    // Reorder the tasks using the order the AI returned (a list of positions).
+    tasks = data.order.map((position) => tasks[position]);
+    saveTasks();
+    render();
+    showStatus("Reordered — most important first.");
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    prioritizeBtn.disabled = false;
+  }
+}
+
+prioritizeBtn.addEventListener("click", prioritizeTasks);
+
 // Show whatever was saved when the page first loads.
 render();
