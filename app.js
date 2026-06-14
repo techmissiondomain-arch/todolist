@@ -17,8 +17,9 @@ const viewTitle = document.getElementById("view-title");
 
 // Load any previously saved tasks, or start with an empty list.
 let tasks = loadTasks();
-let view = "list"; // "list" or "board"
-let activeProject = "all"; // project filter
+let view = localStorage.getItem("todolist.view") || "list"; // list / board / calendar
+let activeProject = localStorage.getItem("todolist.filter") || "all";
+let searchTerm = "";
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -70,7 +71,9 @@ function moveStatus(index, direction) {
 }
 
 function matchesFilter(task) {
-  return activeProject === "all" || (task.project || "") === activeProject;
+  const projectOk = activeProject === "all" || (task.project || "") === activeProject;
+  const searchOk = searchTerm === "" || task.text.toLowerCase().includes(searchTerm);
+  return projectOk && searchOk;
 }
 
 // Add the project / score / schedule badges (whichever the task has) to a row.
@@ -119,9 +122,11 @@ function render() {
 
 function renderList() {
   list.innerHTML = "";
+  let shown = 0;
 
   tasks.forEach((task, index) => {
     if (!matchesFilter(task)) return;
+    shown += 1;
 
     const li = document.createElement("li");
     if (task.done) {
@@ -172,6 +177,16 @@ function renderList() {
     li.appendChild(renderSubtasks(task, index));
     list.appendChild(li);
   });
+
+  if (shown === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty-state";
+    empty.textContent =
+      searchTerm || activeProject !== "all"
+        ? "No matching tasks."
+        : "No tasks yet — add one above, or describe a goal and ✨ Generate.";
+    list.appendChild(empty);
+  }
 }
 
 function renderBoard() {
@@ -310,6 +325,7 @@ function updateProjectNav() {
     btn.append(name, badge);
     btn.addEventListener("click", () => {
       activeProject = value;
+      localStorage.setItem("todolist.filter", value);
       render();
     });
     projectNav.appendChild(btn);
@@ -429,10 +445,16 @@ function deleteSubtask(taskIndex, subIndex) {
 }
 
 // --- View + filter controls -----------------------------------------------
+const searchInput = document.getElementById("search");
 clearCompletedBtn.addEventListener("click", clearCompleted);
+searchInput.addEventListener("input", () => {
+  searchTerm = searchInput.value.trim().toLowerCase();
+  render();
+});
 viewNav.forEach((btn) => {
   btn.addEventListener("click", () => {
     view = btn.dataset.view;
+    localStorage.setItem("todolist.view", view);
     render();
   });
 });
@@ -893,6 +915,13 @@ function renderNotes() {
     li.append(del, heading, body);
     notesList.appendChild(li);
   });
+
+  if (notes.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty-state";
+    empty.textContent = "No notes yet — jot down an idea above.";
+    notesList.appendChild(empty);
+  }
 }
 
 function addNote() {
@@ -910,6 +939,59 @@ noteAdd.addEventListener("click", addNote);
 notesToggle.addEventListener("click", () => {
   notesPanel.hidden = !notesPanel.hidden;
   if (!notesPanel.hidden) renderNotes();
+});
+
+// --- AI meeting assistant --------------------------------------------------
+const meetingToggle = document.getElementById("meeting-toggle");
+const meetingPanel = document.getElementById("meeting-panel");
+const meetingNotes = document.getElementById("meeting-notes");
+const meetingExtract = document.getElementById("meeting-extract");
+
+meetingToggle.addEventListener("click", () => {
+  meetingPanel.hidden = !meetingPanel.hidden;
+  if (!meetingPanel.hidden) meetingNotes.focus();
+});
+
+async function extractMeeting() {
+  const notes = meetingNotes.value.trim();
+  if (notes === "") return;
+  meetingExtract.disabled = true;
+  showAnswer("");
+  showStatus("Reading notes…");
+  try {
+    const data = await callApi("/api/meeting", { notes: notes });
+    if (data) {
+      data.tasks.forEach((task) => addTask(task));
+      meetingNotes.value = "";
+      showStatus(`Added ${data.tasks.length} action items.`);
+      showAnswer(data.summary ? "📝 " + data.summary : "");
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    meetingExtract.disabled = false;
+  }
+}
+
+meetingExtract.addEventListener("click", extractMeeting);
+
+// --- Dark mode -------------------------------------------------------------
+const THEME_KEY = "todolist.theme";
+const themeToggle = document.getElementById("theme-toggle");
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.querySelector("span").textContent =
+    theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+}
+
+let theme = localStorage.getItem(THEME_KEY) || "light";
+applyTheme(theme);
+
+themeToggle.addEventListener("click", () => {
+  theme = theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
 });
 
 // Show whatever was saved when the page first loads.

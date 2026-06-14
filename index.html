@@ -22,10 +22,13 @@
       <nav class="nav">
         <button id="stats-toggle" class="nav-item"><span>📈 Stats</span></button>
         <button id="notes-toggle" class="nav-item"><span>📝 Notes</span></button>
+        <button id="meeting-toggle" class="nav-item"><span>🎙️ Meeting</span></button>
       </nav>
 
       <div class="nav-section">Projects</div>
       <nav id="project-nav" class="nav project-nav"></nav>
+
+      <button id="theme-toggle" class="nav-item theme-toggle"><span>🌙 Dark mode</span></button>
     </aside>
 
     <main class="main">
@@ -34,6 +37,14 @@
           <h1 id="view-title">All tasks</h1>
           <span id="task-counter" class="task-counter"></span>
         </header>
+
+        <input
+          id="search"
+          class="search"
+          type="text"
+          placeholder="🔍 Search tasks…"
+          autocomplete="off"
+        />
 
         <form id="new-task-form" class="new-task">
           <input
@@ -85,6 +96,11 @@
             <button id="note-add" type="button">Add note</button>
           </div>
           <ul id="notes-list" class="notes-list"></ul>
+        </div>
+
+        <div id="meeting-panel" class="panel" hidden>
+          <textarea id="meeting-notes" placeholder="Paste meeting notes or a transcript…"></textarea>
+          <button id="meeting-extract" type="button">Extract action items</button>
         </div>
 
         <ul id="task-list" class="task-list"></ul>

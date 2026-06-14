@@ -6,6 +6,7 @@
 //   /api/ask        — answer a question about the task list
 //   /api/organize   — assign a project, score, and due date to each task
 //   /api/projectcheck — AI project-manager risk + on-track summary
+//   /api/meeting    — extract action items from meeting notes
 //
 // All AI endpoints use Google Gemini's free API. Your key lives here on the
 // server (loaded from .env), never in the browser.
@@ -339,6 +340,39 @@ app.post("/api/projectcheck", async (req, res) => {
       },
     });
     res.json({ summary: typeof result.summary === "string" ? result.summary : "" });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- AI meeting assistant: notes -> action items --------------------------
+app.post("/api/meeting", async (req, res) => {
+  const notes = (req.body?.notes || "").trim();
+  if (!notes) {
+    return res.status(400).json({ error: "Paste some meeting notes first." });
+  }
+
+  try {
+    const result = await askGemini({
+      system:
+        "You are a meeting assistant. From the notes or transcript, extract concrete action " +
+        "items as short imperative tasks that start with a verb. Also write a one-sentence " +
+        "summary of the meeting. Ignore general discussion that isn't actionable. Return at " +
+        "most 12 tasks.",
+      prompt: `Meeting notes:\n${notes}`,
+      schema: {
+        type: "object",
+        properties: {
+          summary: { type: "string" },
+          tasks: { type: "array", items: { type: "string" } },
+        },
+        required: ["summary", "tasks"],
+      },
+    });
+    res.json({
+      summary: typeof result.summary === "string" ? result.summary : "",
+      tasks: Array.isArray(result.tasks) ? result.tasks : [],
+    });
   } catch (err) {
     handleAiError(err, res);
   }

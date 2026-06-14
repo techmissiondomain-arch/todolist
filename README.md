@@ -20,6 +20,9 @@ An AI-powered task manager with a clean dashboard (sidebar + List / Board / Cale
 - **📥 AI: organize your inbox** — auto-assign a project, priority, and due date
 - **🔮 AI: project check** — a quick risk / on-track status report
 - **📋 Kanban board view** — To do / In progress / Done, with a project filter
+- **📅 Calendar view**, **📈 stats**, 🔁 **recurring tasks**, and 📝 **notes**
+- **🎙️ AI: meeting notes → action items**
+- **🔍 Search tasks** and **🌙 dark mode** (both remembered between visits)
 
 ## How to run
 
