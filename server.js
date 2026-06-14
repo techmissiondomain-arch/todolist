@@ -7,6 +7,7 @@
 //   /api/organize   — assign a project, score, and due date to each task
 //   /api/projectcheck — AI project-manager risk + on-track summary
 //   /api/meeting    — extract action items from meeting notes
+//   /api/notes-summary — summarize the knowledge-base notes
 //
 // All AI endpoints use Google Gemini's free API. Your key lives here on the
 // server (loaded from .env), never in the browser.
@@ -373,6 +374,35 @@ app.post("/api/meeting", async (req, res) => {
       summary: typeof result.summary === "string" ? result.summary : "",
       tasks: Array.isArray(result.tasks) ? result.tasks : [],
     });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Summarize notes (knowledge base) -------------------------------------
+app.post("/api/notes-summary", async (req, res) => {
+  const notes = Array.isArray(req.body?.notes) ? req.body.notes : [];
+  if (notes.length < 1) {
+    return res.status(400).json({ error: "Add a note first." });
+  }
+
+  const text = notes
+    .map((n, i) => `${i + 1}. ${n.title || "(untitled)"}: ${n.body || ""}`)
+    .join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You summarize a set of personal notes into a concise digest: the key themes, any " +
+        "decisions, and any implied action items. Keep it to 2-4 short sentences.",
+      prompt: `Notes:\n${text}`,
+      schema: {
+        type: "object",
+        properties: { summary: { type: "string" } },
+        required: ["summary"],
+      },
+    });
+    res.json({ summary: typeof result.summary === "string" ? result.summary : "" });
   } catch (err) {
     handleAiError(err, res);
   }

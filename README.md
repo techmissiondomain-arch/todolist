@@ -23,6 +23,8 @@ An AI-powered task manager with a clean dashboard (sidebar + List / Board / Cale
 - **📅 Calendar view**, **📈 stats**, 🔁 **recurring tasks**, and 📝 **notes**
 - **🎙️ AI: meeting notes → action items**
 - **🔍 Search tasks** and **🌙 dark mode** (both remembered between visits)
+- **⚡ Quick add** — type `#Work email Sara tomorrow` to set project + due date automatically
+- **🗒️ Task details**, note **project tags**, and **🧠 AI note summaries**
 
 ## How to run
 

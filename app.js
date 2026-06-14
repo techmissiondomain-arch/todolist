@@ -264,6 +264,18 @@ function renderSubtasks(task, index) {
   const wrap = document.createElement("div");
   wrap.className = "subtasks";
 
+  // Optional free-text description / details for the task.
+  const desc = document.createElement("input");
+  desc.type = "text";
+  desc.className = "task-desc";
+  desc.placeholder = "Add details…";
+  desc.value = task.description || "";
+  desc.addEventListener("change", () => {
+    tasks[index].description = desc.value.trim() || null;
+    saveTasks();
+  });
+  wrap.appendChild(desc);
+
   const subs = task.subtasks || [];
   subs.forEach((sub, subIndex) => {
     const subRow = document.createElement("div");
@@ -393,6 +405,73 @@ function addTask(text) {
   render();
 }
 
+// Parse quick-add syntax: "#Project email Sara tomorrow" -> {text, project, due}.
+function parseQuickAdd(raw) {
+  let text = raw;
+  let project = null;
+  let due = null;
+
+  const projectMatch = text.match(/#(\S+)/);
+  if (projectMatch) {
+    project = projectMatch[1];
+    text = text.replace(projectMatch[0], "");
+  }
+
+  const fmt = (d) => {
+    const offsetMs = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offsetMs).toISOString().slice(0, 10);
+  };
+  const today = new Date();
+  const lower = text.toLowerCase();
+  const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+  let m;
+  if ((m = lower.match(/\bin (\d+) days?\b/))) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + parseInt(m[1], 10));
+    due = fmt(d);
+    text = text.replace(/\bin \d+ days?\b/i, "");
+  } else if (/\btoday\b/i.test(text)) {
+    due = fmt(today);
+    text = text.replace(/\btoday\b/i, "");
+  } else if (/\btomorrow\b/i.test(text)) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    due = fmt(d);
+    text = text.replace(/\btomorrow\b/i, "");
+  } else if (/\bnext week\b/i.test(text)) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 7);
+    due = fmt(d);
+    text = text.replace(/\bnext week\b/i, "");
+  } else if ((m = lower.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/))) {
+    const target = weekdays.indexOf(m[1]);
+    const d = new Date(today);
+    let diff = (target - d.getDay() + 7) % 7;
+    if (diff === 0) diff = 7;
+    d.setDate(d.getDate() + diff);
+    due = fmt(d);
+    text = text.replace(new RegExp(`\\b${m[1]}\\b`, "i"), "");
+  } else if ((m = text.match(/\b(\d{4}-\d{2}-\d{2})\b/))) {
+    due = m[1];
+    text = text.replace(/\b\d{4}-\d{2}-\d{2}\b/, "");
+  }
+
+  text = text.replace(/\s+/g, " ").trim();
+  return { text, project, due };
+}
+
+function addTaskFromText(raw) {
+  const parsed = parseQuickAdd(raw);
+  if (parsed.text === "") return;
+  const task = { text: parsed.text, done: false, status: "todo" };
+  if (parsed.project) task.project = parsed.project;
+  if (parsed.due) task.due = parsed.due;
+  tasks.push(task);
+  saveTasks();
+  render();
+}
+
 function toggleTask(index) {
   const task = tasks[index];
   const nowDone = !task.done;
@@ -461,11 +540,10 @@ viewNav.forEach((btn) => {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const text = input.value.trim();
-  if (text === "") {
+  if (input.value.trim() === "") {
     return;
   }
-  addTask(text);
+  addTaskFromText(input.value);
   input.value = "";
   input.focus();
 });
@@ -836,17 +914,27 @@ function renderStats() {
   const done = tasks.filter((t) => t.done).length;
   const open = total - done;
   const pct = total ? Math.round((done / total) * 100) : 0;
+  const today = todayString();
   const overdue = tasks.filter((t) => isOverdue(t)).length;
+  const dueToday = tasks.filter((t) => !t.done && t.due === today).length;
   const noDue = tasks.filter((t) => !t.due && !t.done).length;
 
-  const byProject = {};
+  const agg = {};
   tasks.forEach((t) => {
     const key = t.project || "No project";
-    byProject[key] = (byProject[key] || 0) + 1;
+    if (!agg[key]) agg[key] = { done: 0, total: 0 };
+    agg[key].total += 1;
+    if (t.done) agg[key].done += 1;
   });
-  const projectRows = Object.entries(byProject)
-    .sort((a, b) => b[1] - a[1])
-    .map(([p, n]) => `<li><span>${escapeHtml(p)}</span><span>${n}</span></li>`)
+  const projectBars = Object.entries(agg)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([p, v]) => {
+      const ppc = v.total ? Math.round((v.done / v.total) * 100) : 0;
+      return `<div class="proj-prog">
+        <div class="proj-prog-head"><span>${escapeHtml(p)}</span><span>${v.done}/${v.total}</span></div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:${ppc}%"></div></div>
+      </div>`;
+    })
     .join("");
 
   statsPanel.innerHTML = `
@@ -856,11 +944,15 @@ function renderStats() {
       <li><span>Total tasks</span><span>${total}</span></li>
       <li><span>Done</span><span>${done}</span></li>
       <li><span>Open</span><span>${open}</span></li>
+    </ul>
+    <div class="stat-subtitle">Today's load</div>
+    <ul class="stat-list">
+      <li><span>Due today</span><span>${dueToday}</span></li>
       <li><span>Overdue</span><span>${overdue}</span></li>
       <li><span>No due date</span><span>${noDue}</span></li>
     </ul>
     <div class="stat-subtitle">By project</div>
-    <ul class="stat-list">${projectRows || "<li><span>No tasks yet</span><span></span></li>"}</ul>
+    ${projectBars || '<div class="proj-prog"><div class="proj-prog-head"><span>No tasks yet</span><span></span></div></div>'}
   `;
 }
 
@@ -876,8 +968,10 @@ const notesPanel = document.getElementById("notes-panel");
 const notesToggle = document.getElementById("notes-toggle");
 const notesList = document.getElementById("notes-list");
 const noteTitle = document.getElementById("note-title");
+const noteProject = document.getElementById("note-project");
 const noteBody = document.getElementById("note-body");
 const noteAdd = document.getElementById("note-add");
+const noteSummarize = document.getElementById("note-summarize");
 
 function loadNotes() {
   const saved = localStorage.getItem(NOTES_KEY);
@@ -896,7 +990,15 @@ function renderNotes() {
 
     const heading = document.createElement("div");
     heading.className = "note-heading";
-    heading.textContent = note.title || "(untitled)";
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = note.title || "(untitled)";
+    heading.appendChild(titleSpan);
+    if (note.project) {
+      const badge = document.createElement("span");
+      badge.className = "badge project";
+      badge.textContent = note.project;
+      heading.appendChild(badge);
+    }
 
     const body = document.createElement("div");
     body.className = "note-text";
@@ -927,15 +1029,39 @@ function renderNotes() {
 function addNote() {
   const title = noteTitle.value.trim();
   const body = noteBody.value.trim();
+  const project = noteProject.value.trim();
   if (title === "" && body === "") return;
-  notes.push({ title: title, body: body });
+  notes.push({ title: title, body: body, project: project || null });
   saveNotes();
   noteTitle.value = "";
   noteBody.value = "";
+  noteProject.value = "";
   renderNotes();
 }
 
+async function summarizeNotes() {
+  if (notes.length === 0) {
+    showStatus("Add a note first.");
+    return;
+  }
+  noteSummarize.disabled = true;
+  showAnswer("");
+  showStatus("Summarizing…");
+  try {
+    const data = await callApi("/api/notes-summary", { notes: notes });
+    if (data) {
+      showStatus("");
+      showAnswer("🧠 " + (data.summary || ""));
+    }
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    noteSummarize.disabled = false;
+  }
+}
+
 noteAdd.addEventListener("click", addNote);
+noteSummarize.addEventListener("click", summarizeNotes);
 notesToggle.addEventListener("click", () => {
   notesPanel.hidden = !notesPanel.hidden;
   if (!notesPanel.hidden) renderNotes();

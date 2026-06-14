@@ -50,7 +50,7 @@
           <input
             id="new-task-input"
             type="text"
-            placeholder="What do you need to do?"
+            placeholder="Add a task… try '#Work email Sara tomorrow'"
             autocomplete="off"
             required
           />
@@ -92,8 +92,12 @@
         <div id="notes-panel" class="panel" hidden>
           <div class="note-form">
             <input id="note-title" type="text" placeholder="Note title" autocomplete="off" />
+            <input id="note-project" type="text" placeholder="Project (optional)" autocomplete="off" />
             <textarea id="note-body" placeholder="Write a note… (ideas, links, plans)"></textarea>
-            <button id="note-add" type="button">Add note</button>
+            <div class="note-form-actions">
+              <button id="note-add" type="button">Add note</button>
+              <button id="note-summarize" type="button" class="ghost">✨ Summarize notes</button>
+            </div>
           </div>
           <ul id="notes-list" class="notes-list"></ul>
         </div>
