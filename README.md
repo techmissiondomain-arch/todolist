@@ -1,6 +1,6 @@
 # My To-Do List
 
-A simple to-do list app built with plain HTML, CSS, and JavaScript. No frameworks, no build step — just open it in your browser and start adding tasks. Your tasks are saved automatically in your browser, so they're still there when you come back.
+A simple to-do list app — now with **AI task generation**. Add tasks by hand, or describe a goal (like "Plan a birthday party") and let Claude break it into a checklist for you. Your tasks are saved automatically in your browser.
 
 ## Features
 
@@ -8,21 +8,34 @@ A simple to-do list app built with plain HTML, CSS, and JavaScript. No framework
 - Mark a task as done (and unmark it)
 - Delete a task
 - Tasks are saved automatically using your browser's local storage
+- **✨ AI: turn a goal into a list of tasks** (powered by Claude)
 
 ## How to run
 
-1. Download or clone this repository.
-2. Open `index.html` in any web browser (double-click it, or right-click → Open with).
+The AI feature needs a small server, so there's a one-time setup.
 
-That's it — there's nothing to install.
+1. **Install dependencies** (one time):
+   ```
+   npm install
+   ```
+2. **Add your API key**: copy `.env.example` to a new file named `.env`, then paste in your key from [console.anthropic.com](https://console.anthropic.com).
+3. **Start the app**:
+   ```
+   npm start
+   ```
+4. Open the link it prints (usually **http://localhost:3000**) in your browser.
+
+> No API key yet? The app still runs and works for adding/checking/deleting tasks — only the ✨ Generate button needs the key.
 
 ## Project structure
 
-| File         | What it does                          |
-| ------------ | ------------------------------------- |
-| `index.html` | The page layout                       |
-| `styles.css` | How the page looks                    |
-| `app.js`     | The logic (adding, saving, deleting)  |
+| File           | What it does                                      |
+| -------------- | ------------------------------------------------- |
+| `index.html`   | The page layout                                   |
+| `styles.css`   | How the page looks                                |
+| `app.js`       | The browser logic (adding, saving, deleting, AI)  |
+| `server.js`    | The server that talks to Claude                   |
+| `package.json` | Lists the project's dependencies                  |
 
 ## License
 

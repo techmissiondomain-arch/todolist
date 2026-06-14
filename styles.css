@@ -60,6 +60,46 @@ h1 {
   opacity: 0.9;
 }
 
+.ai-generate {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-generate input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.ai-generate button {
+  padding: 12px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ai-generate button:hover {
+  background: #eef2ff;
+}
+
+.ai-generate button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ai-status {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
 .task-list {
   list-style: none;
   padding: 0;

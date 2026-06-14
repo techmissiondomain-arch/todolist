@@ -76,5 +76,57 @@ form.addEventListener("submit", (event) => {
   input.focus();
 });
 
+// --- AI task generation ---------------------------------------------------
+// Send the user's goal to our server, which asks Claude to break it into
+// tasks, then add each returned task to the list.
+
+const goalInput = document.getElementById("ai-goal-input");
+const generateBtn = document.getElementById("ai-generate-btn");
+const status = document.getElementById("ai-status");
+
+function showStatus(message) {
+  status.textContent = message;
+  status.hidden = !message;
+}
+
+async function generateTasks() {
+  const goal = goalInput.value.trim();
+  if (goal === "") {
+    return;
+  }
+
+  generateBtn.disabled = true;
+  showStatus("Thinking…");
+
+  try {
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal: goal }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      showStatus(data.error || "Something went wrong.");
+      return;
+    }
+
+    data.tasks.forEach((task) => addTask(task));
+    goalInput.value = "";
+    showStatus(`Added ${data.tasks.length} tasks.`);
+  } catch (err) {
+    showStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    generateBtn.disabled = false;
+  }
+}
+
+generateBtn.addEventListener("click", generateTasks);
+goalInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    generateTasks();
+  }
+});
+
 // Show whatever was saved when the page first loads.
 render();
