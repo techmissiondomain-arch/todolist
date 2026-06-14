@@ -16,7 +16,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(__dirname)); // serve the front-end files
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 app.post("/api/generate", async (req, res) => {
   const goal = (req.body?.goal || "").trim();
