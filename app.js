@@ -731,13 +731,49 @@ const modalProject = document.getElementById("modal-project");
 const modalGoal = document.getElementById("modal-goal");
 const modalGenerateBtn = document.getElementById("modal-generate");
 const modalStatus = document.getElementById("modal-status");
+const modalPreview = document.getElementById("modal-preview");
 const modalAddBtn = document.getElementById("modal-add");
 const modalCancelBtn = document.getElementById("modal-cancel");
 const modalCloseBtn = document.getElementById("modal-close");
 
+let stagedTasks = []; // AI-generated tasks waiting for the user to confirm
+
 function showModalStatus(message) {
   modalStatus.textContent = message;
   modalStatus.hidden = !message;
+}
+
+// Show the AI-generated tasks inside the modal so the user can review/remove
+// them before committing.
+function renderPreview() {
+  modalPreview.innerHTML = "";
+  if (stagedTasks.length === 0) {
+    modalPreview.hidden = true;
+    return;
+  }
+  modalPreview.hidden = false;
+
+  const label = document.createElement("div");
+  label.className = "modal-preview-label";
+  label.textContent = `${stagedTasks.length} task${stagedTasks.length > 1 ? "s" : ""} ready — review, then click “Add task”:`;
+  modalPreview.appendChild(label);
+
+  stagedTasks.forEach((text, i) => {
+    const row = document.createElement("div");
+    row.className = "preview-row";
+    const span = document.createElement("span");
+    span.textContent = text;
+    const del = document.createElement("button");
+    del.className = "delete";
+    del.textContent = "×";
+    del.title = "Remove";
+    del.addEventListener("click", () => {
+      stagedTasks.splice(i, 1);
+      renderPreview();
+    });
+    row.append(span, del);
+    modalPreview.appendChild(row);
+  });
 }
 
 function openModal() {
@@ -745,36 +781,33 @@ function openModal() {
   modalGoal.value = "";
   modalDue.value = "";
   modalProject.value = "";
+  stagedTasks = [];
+  renderPreview();
   showModalStatus("");
   addModal.hidden = false;
   modalTaskInput.focus();
 }
 
 function closeModal() {
+  stagedTasks = [];
+  renderPreview();
   addModal.hidden = true;
 }
 
-// Add a single task from the modal (with quick-add parsing + the extra fields).
-function modalAdd() {
-  const raw = modalTaskInput.value.trim();
-  if (raw === "") {
-    showModalStatus("Type a task name, or use AI generate below.");
-    return;
-  }
-  const parsed = parseQuickAdd(raw);
-  const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
-  const project = modalProject.value.trim() || parsed.project;
-  if (project) task.project = project;
-  const due = modalDue.value || parsed.due;
-  if (due) task.due = due;
-  tasks.push(task);
-  saveTasks();
+// Clear filters/view so freshly added tasks are actually visible.
+function resetToAllTasks() {
   activePanel = null;
-  closeModal();
-  render();
+  smartFilter = null;
+  activeProject = "all";
+  searchTerm = "";
+  view = "list";
+  if (searchInput) searchInput.value = "";
+  localStorage.setItem("todolist.view", view);
+  localStorage.setItem("todolist.filter", activeProject);
+  localStorage.setItem("todolist.smart", "");
 }
 
-// Let AI turn an idea/goal into several tasks, straight from the modal.
+// Generate tasks with AI and stage them inside the modal for review.
 async function modalGenerate() {
   const goal = modalGoal.value.trim() || modalTaskInput.value.trim();
   if (goal === "") {
@@ -794,18 +827,47 @@ async function modalGenerate() {
       showModalStatus(data.error || "Something went wrong.");
       return;
     }
-    data.tasks.forEach((t) =>
-      tasks.push({ id: genId(), text: t, done: false, status: "todo" })
-    );
-    saveTasks();
-    activePanel = null;
-    closeModal();
-    render();
+    stagedTasks.push(...data.tasks);
+    modalGoal.value = "";
+    showModalStatus(`Generated ${data.tasks.length}. Review below, then “Add task”.`);
+    renderPreview();
   } catch (err) {
     showModalStatus("Couldn't reach the server. Is it running?");
   } finally {
     modalGenerateBtn.disabled = false;
   }
+}
+
+// Commit the typed task (if any) plus any staged AI tasks.
+function modalAdd() {
+  const toAdd = [];
+
+  const raw = modalTaskInput.value.trim();
+  if (raw !== "") {
+    const parsed = parseQuickAdd(raw);
+    const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
+    const project = modalProject.value.trim() || parsed.project;
+    if (project) task.project = project;
+    const due = modalDue.value || parsed.due;
+    if (due) task.due = due;
+    toAdd.push(task);
+  }
+
+  stagedTasks.forEach((text) => {
+    toAdd.push({ id: genId(), text: text, done: false, status: "todo" });
+  });
+
+  if (toAdd.length === 0) {
+    showModalStatus("Type a task, or generate some with AI first.");
+    return;
+  }
+
+  toAdd.forEach((t) => tasks.push(t));
+  saveTasks();
+  stagedTasks = [];
+  resetToAllTasks(); // make sure the new tasks are visible
+  closeModal();
+  render();
 }
 
 modalAddBtn.addEventListener("click", modalAdd);

@@ -958,6 +958,30 @@ input[type="checkbox"] {
   cursor: default;
 }
 
+.modal-preview {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.modal-preview-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
 .modal-status {
   margin: 0 0 12px;
   font-size: 13px;
@@ -966,7 +990,7 @@ input[type="checkbox"] {
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
 }
 
