@@ -11,6 +11,8 @@
     <aside class="sidebar">
       <div class="brand"><span class="brand-mark">✓</span> TaskFlow</div>
 
+      <button id="add-task-btn" class="add-task-btn">＋ Add task</button>
+
       <div class="nav-section">Views</div>
       <nav class="nav">
         <button class="nav-item" data-view="list"><span>📃 List</span></button>
@@ -20,9 +22,9 @@
 
       <div class="nav-section">Insights</div>
       <nav class="nav">
-        <button id="stats-toggle" class="nav-item"><span>📈 Stats</span></button>
-        <button id="notes-toggle" class="nav-item"><span>📝 Notes</span></button>
-        <button id="meeting-toggle" class="nav-item"><span>🎙️ Meeting</span></button>
+        <button class="nav-item insight" data-panel="stats"><span>📈 Stats</span></button>
+        <button class="nav-item insight" data-panel="notes"><span>📝 Notes</span></button>
+        <button class="nav-item insight" data-panel="meeting"><span>🎙️ Meeting</span></button>
       </nav>
 
       <div class="nav-section">Smart lists</div>
@@ -45,56 +47,80 @@
           <span id="task-counter" class="task-counter"></span>
         </header>
 
-        <input
-          id="search"
-          class="search"
-          type="text"
-          placeholder="🔍 Search tasks…"
-          autocomplete="off"
-        />
-
-        <form id="new-task-form" class="new-task">
-          <input
-            id="new-task-input"
-            type="text"
-            placeholder="Add a task… try '#Work email Sara tomorrow'"
-            autocomplete="off"
-            required
-          />
-          <button type="submit">Add</button>
-        </form>
-
-        <div class="ai-generate">
-          <input
-            id="ai-goal-input"
-            type="text"
-            placeholder="Or describe a goal, e.g. Plan a birthday party"
-            autocomplete="off"
-          />
-          <button id="ai-generate-btn" type="button">✨ Generate</button>
-        </div>
-
-        <div class="ai-ask">
-          <input
-            id="ai-ask-input"
-            type="text"
-            placeholder="Ask about your tasks, e.g. What should I do first?"
-            autocomplete="off"
-          />
-          <button id="ai-ask-btn" type="button">Ask</button>
-        </div>
-        <p id="ai-answer" class="ai-answer" hidden></p>
         <p id="ai-status" class="ai-status" hidden></p>
+        <p id="ai-answer" class="ai-answer" hidden></p>
 
-        <div class="list-tools">
-          <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
-          <button id="ai-score-btn" type="button">📊 Score</button>
-          <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
-          <button id="ai-organize-btn" type="button">📥 Organize</button>
-          <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
-          <button id="select-toggle" type="button">☑️ Select</button>
+        <!-- Task workspace: shown when a view (list/board/calendar) is active -->
+        <div id="workspace">
+          <input
+            id="search"
+            class="search"
+            type="text"
+            placeholder="🔍 Search tasks…"
+            autocomplete="off"
+          />
+
+          <form id="new-task-form" class="new-task">
+            <input
+              id="new-task-input"
+              type="text"
+              placeholder="Add a task… try '#Work email Sara tomorrow'"
+              autocomplete="off"
+              required
+            />
+            <button type="submit">Add</button>
+          </form>
+
+          <div class="ai-generate">
+            <input
+              id="ai-goal-input"
+              type="text"
+              placeholder="Or describe a goal, e.g. Plan a birthday party"
+              autocomplete="off"
+            />
+            <button id="ai-generate-btn" type="button">✨ Generate</button>
+          </div>
+
+          <div class="ai-ask">
+            <input
+              id="ai-ask-input"
+              type="text"
+              placeholder="Ask about your tasks, e.g. What should I do first?"
+              autocomplete="off"
+            />
+            <button id="ai-ask-btn" type="button">Ask</button>
+          </div>
+
+          <div class="list-tools">
+            <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
+            <button id="ai-score-btn" type="button">📊 Score</button>
+            <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
+            <button id="ai-organize-btn" type="button">📥 Organize</button>
+            <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
+            <button id="select-toggle" type="button">☑️ Select</button>
+          </div>
+
+          <div id="bulk-bar" class="bulk-bar" hidden>
+            <span id="bulk-count">0 selected</span>
+            <button data-bulk="complete" type="button">✓ Complete</button>
+            <button data-bulk="todo" type="button">↩ To do</button>
+            <button data-bulk="in_progress" type="button">▶ In progress</button>
+            <button data-bulk="delete" type="button">🗑 Delete</button>
+            <button data-bulk="clear" type="button">✕</button>
+          </div>
+
+          <ul id="task-list" class="task-list"></ul>
+          <div id="board" class="board" hidden></div>
+          <div id="calendar" class="calendar" hidden></div>
+
+          <div class="list-footer">
+            <button id="clear-completed-btn" class="clear-completed" type="button" hidden>
+              Clear completed
+            </button>
+          </div>
         </div>
 
+        <!-- Insight panels: each shown only when its sidebar item is active -->
         <div id="stats-panel" class="panel" hidden></div>
 
         <div id="notes-panel" class="panel" hidden>
@@ -113,25 +139,6 @@
         <div id="meeting-panel" class="panel" hidden>
           <textarea id="meeting-notes" placeholder="Paste meeting notes or a transcript…"></textarea>
           <button id="meeting-extract" type="button">Extract action items</button>
-        </div>
-
-        <div id="bulk-bar" class="bulk-bar" hidden>
-          <span id="bulk-count">0 selected</span>
-          <button data-bulk="complete" type="button">✓ Complete</button>
-          <button data-bulk="todo" type="button">↩ To do</button>
-          <button data-bulk="in_progress" type="button">▶ In progress</button>
-          <button data-bulk="delete" type="button">🗑 Delete</button>
-          <button data-bulk="clear" type="button">✕</button>
-        </div>
-
-        <ul id="task-list" class="task-list"></ul>
-        <div id="board" class="board" hidden></div>
-        <div id="calendar" class="calendar" hidden></div>
-
-        <div class="list-footer">
-          <button id="clear-completed-btn" class="clear-completed" type="button" hidden>
-            Clear completed
-          </button>
         </div>
       </div>
     </main>

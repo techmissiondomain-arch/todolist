@@ -89,6 +89,25 @@ body {
   margin-top: auto;
 }
 
+.add-task-btn {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.add-task-btn:hover {
+  background: #4f51e6;
+}
+
 .main {
   flex: 1;
   overflow-y: auto;

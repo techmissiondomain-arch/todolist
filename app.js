@@ -12,8 +12,11 @@ const counter = document.getElementById("task-counter");
 const clearCompletedBtn = document.getElementById("clear-completed-btn");
 const calendarEl = document.getElementById("calendar");
 const viewNav = document.querySelectorAll(".nav-item[data-view]");
+const insightNav = document.querySelectorAll(".nav-item.insight");
 const projectNav = document.getElementById("project-nav");
 const viewTitle = document.getElementById("view-title");
+const workspace = document.getElementById("workspace");
+const addTaskBtn = document.getElementById("add-task-btn");
 
 // Load any previously saved tasks, or start with an empty list.
 let tasks = loadTasks();
@@ -22,6 +25,7 @@ let activeProject = localStorage.getItem("todolist.filter") || "all";
 let smartFilter = localStorage.getItem("todolist.smart") || null; // today / overdue / upcoming
 let searchTerm = "";
 let selectMode = false;
+let activePanel = null; // null (tasks) | "stats" | "notes" | "meeting"
 const selected = new Set();
 
 function genId() {
@@ -117,31 +121,55 @@ function appendBadges(container, task) {
 
 // --- Rendering ------------------------------------------------------------
 const SMART_TITLES = { today: "Today", overdue: "Overdue", upcoming: "Upcoming" };
+const PANEL_TITLES = { stats: "Stats", notes: "Notes", meeting: "Meeting" };
 const smartNav = document.querySelectorAll(".nav-item.smart");
 
+// Open an insight panel (or toggle it off, returning to the task views).
+function showPanel(name) {
+  activePanel = activePanel === name ? null : name;
+  render();
+}
+
 function render() {
+  const onTasks = !activePanel;
   updateProjectNav();
-  viewNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
-  smartNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.smart === smartFilter));
-  viewTitle.textContent = smartFilter
-    ? SMART_TITLES[smartFilter]
-    : activeProject === "all"
-      ? "All tasks"
-      : activeProject;
-  list.hidden = view !== "list";
-  boardEl.hidden = view !== "board";
-  calendarEl.hidden = view !== "calendar";
-  if (view === "list") {
-    renderList();
-  } else if (view === "board") {
-    renderBoard();
-  } else {
-    renderCalendar();
-  }
-  updateProgress();
-  updateBulkBar();
-  if (!statsPanel.hidden) {
+
+  // Highlight exactly the active item per group (filters only highlight on tasks).
+  viewNav.forEach((btn) => btn.classList.toggle("active", onTasks && btn.dataset.view === view));
+  smartNav.forEach((btn) => btn.classList.toggle("active", onTasks && btn.dataset.smart === smartFilter));
+  insightNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.panel === activePanel));
+
+  viewTitle.textContent = activePanel
+    ? PANEL_TITLES[activePanel]
+    : smartFilter
+      ? SMART_TITLES[smartFilter]
+      : activeProject === "all"
+        ? "All tasks"
+        : activeProject;
+
+  // Show exactly one area: the task workspace, or one insight panel.
+  workspace.hidden = !onTasks;
+  statsPanel.hidden = activePanel !== "stats";
+  notesPanel.hidden = activePanel !== "notes";
+  meetingPanel.hidden = activePanel !== "meeting";
+
+  if (onTasks) {
+    list.hidden = view !== "list";
+    boardEl.hidden = view !== "board";
+    calendarEl.hidden = view !== "calendar";
+    if (view === "list") {
+      renderList();
+    } else if (view === "board") {
+      renderBoard();
+    } else {
+      renderCalendar();
+    }
+    updateProgress();
+    updateBulkBar();
+  } else if (activePanel === "stats") {
     renderStats();
+  } else if (activePanel === "notes") {
+    renderNotes();
   }
 }
 
@@ -382,7 +410,7 @@ function updateProjectNav() {
 
   function addItem(value, label, count) {
     const btn = document.createElement("button");
-    btn.className = "nav-item" + (activeProject === value ? " active" : "");
+    btn.className = "nav-item" + (!activePanel && activeProject === value ? " active" : "");
 
     const name = document.createElement("span");
     name.textContent = label;
@@ -394,6 +422,7 @@ function updateProjectNav() {
     btn.append(name, badge);
     btn.addEventListener("click", () => {
       activeProject = value;
+      activePanel = null;
       localStorage.setItem("todolist.filter", value);
       render();
     });
@@ -594,6 +623,7 @@ searchInput.addEventListener("input", () => {
 viewNav.forEach((btn) => {
   btn.addEventListener("click", () => {
     view = btn.dataset.view;
+    activePanel = null;
     localStorage.setItem("todolist.view", view);
     render();
   });
@@ -602,9 +632,20 @@ viewNav.forEach((btn) => {
 smartNav.forEach((btn) => {
   btn.addEventListener("click", () => {
     smartFilter = smartFilter === btn.dataset.smart ? null : btn.dataset.smart;
+    activePanel = null;
     localStorage.setItem("todolist.smart", smartFilter || "");
     render();
   });
+});
+
+insightNav.forEach((btn) => {
+  btn.addEventListener("click", () => showPanel(btn.dataset.panel));
+});
+
+addTaskBtn.addEventListener("click", () => {
+  activePanel = null;
+  render();
+  input.focus();
 });
 
 // --- Bulk select + actions -------------------------------------------------
@@ -1043,7 +1084,6 @@ function renderCalendar() {
 
 // --- Stats panel -----------------------------------------------------------
 const statsPanel = document.getElementById("stats-panel");
-const statsToggle = document.getElementById("stats-toggle");
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) =>
@@ -1098,16 +1138,12 @@ function renderStats() {
   `;
 }
 
-statsToggle.addEventListener("click", () => {
-  statsPanel.hidden = !statsPanel.hidden;
-  if (!statsPanel.hidden) renderStats();
-});
+// The Stats panel opens via the sidebar Insights nav (see showPanel).
 
 // --- Notes (knowledge base) ------------------------------------------------
 const NOTES_KEY = "todolist.notes";
 let notes = loadNotes();
 const notesPanel = document.getElementById("notes-panel");
-const notesToggle = document.getElementById("notes-toggle");
 const notesList = document.getElementById("notes-list");
 const noteTitle = document.getElementById("note-title");
 const noteProject = document.getElementById("note-project");
@@ -1204,21 +1240,11 @@ async function summarizeNotes() {
 
 noteAdd.addEventListener("click", addNote);
 noteSummarize.addEventListener("click", summarizeNotes);
-notesToggle.addEventListener("click", () => {
-  notesPanel.hidden = !notesPanel.hidden;
-  if (!notesPanel.hidden) renderNotes();
-});
 
 // --- AI meeting assistant --------------------------------------------------
-const meetingToggle = document.getElementById("meeting-toggle");
 const meetingPanel = document.getElementById("meeting-panel");
 const meetingNotes = document.getElementById("meeting-notes");
 const meetingExtract = document.getElementById("meeting-extract");
-
-meetingToggle.addEventListener("click", () => {
-  meetingPanel.hidden = !meetingPanel.hidden;
-  if (!meetingPanel.hidden) meetingNotes.focus();
-});
 
 async function extractMeeting() {
   const notes = meetingNotes.value.trim();
