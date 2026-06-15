@@ -618,6 +618,7 @@ const searchInput = document.getElementById("search");
 clearCompletedBtn.addEventListener("click", clearCompleted);
 searchInput.addEventListener("input", () => {
   searchTerm = searchInput.value.trim().toLowerCase();
+  if (searchTerm) activePanel = null; // show results in the task view
   render();
 });
 viewNav.forEach((btn) => {
@@ -642,11 +643,7 @@ insightNav.forEach((btn) => {
   btn.addEventListener("click", () => showPanel(btn.dataset.panel));
 });
 
-addTaskBtn.addEventListener("click", () => {
-  activePanel = null;
-  render();
-  input.focus();
-});
+addTaskBtn.addEventListener("click", openModal);
 
 // --- Bulk select + actions -------------------------------------------------
 const selectToggle = document.getElementById("select-toggle");
@@ -703,6 +700,11 @@ function reorderTask(sourceId, targetId) {
 
 // --- Keyboard shortcuts ----------------------------------------------------
 document.addEventListener("keydown", (event) => {
+  // Escape closes the add-task modal first, from anywhere.
+  if (event.key === "Escape" && !addModal.hidden) {
+    closeModal();
+    return;
+  }
   const tag = (event.target.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || event.target.isContentEditable) {
     if (event.key === "Escape") event.target.blur();
@@ -710,7 +712,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "n") {
     event.preventDefault();
-    input.focus();
+    openModal();
   } else if (event.key === "/") {
     event.preventDefault();
     searchInput.focus();
@@ -719,6 +721,105 @@ document.addEventListener("keydown", (event) => {
     selected.clear();
     render();
   }
+});
+
+// --- Add-task modal --------------------------------------------------------
+const addModal = document.getElementById("add-modal");
+const modalTaskInput = document.getElementById("modal-task-input");
+const modalDue = document.getElementById("modal-due");
+const modalProject = document.getElementById("modal-project");
+const modalGoal = document.getElementById("modal-goal");
+const modalGenerateBtn = document.getElementById("modal-generate");
+const modalStatus = document.getElementById("modal-status");
+const modalAddBtn = document.getElementById("modal-add");
+const modalCancelBtn = document.getElementById("modal-cancel");
+const modalCloseBtn = document.getElementById("modal-close");
+
+function showModalStatus(message) {
+  modalStatus.textContent = message;
+  modalStatus.hidden = !message;
+}
+
+function openModal() {
+  modalTaskInput.value = "";
+  modalGoal.value = "";
+  modalDue.value = "";
+  modalProject.value = "";
+  showModalStatus("");
+  addModal.hidden = false;
+  modalTaskInput.focus();
+}
+
+function closeModal() {
+  addModal.hidden = true;
+}
+
+// Add a single task from the modal (with quick-add parsing + the extra fields).
+function modalAdd() {
+  const raw = modalTaskInput.value.trim();
+  if (raw === "") {
+    showModalStatus("Type a task name, or use AI generate below.");
+    return;
+  }
+  const parsed = parseQuickAdd(raw);
+  const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
+  const project = modalProject.value.trim() || parsed.project;
+  if (project) task.project = project;
+  const due = modalDue.value || parsed.due;
+  if (due) task.due = due;
+  tasks.push(task);
+  saveTasks();
+  activePanel = null;
+  closeModal();
+  render();
+}
+
+// Let AI turn an idea/goal into several tasks, straight from the modal.
+async function modalGenerate() {
+  const goal = modalGoal.value.trim() || modalTaskInput.value.trim();
+  if (goal === "") {
+    showModalStatus("Type an idea or goal to generate from.");
+    return;
+  }
+  modalGenerateBtn.disabled = true;
+  showModalStatus("✨ Thinking…");
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal: goal }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showModalStatus(data.error || "Something went wrong.");
+      return;
+    }
+    data.tasks.forEach((t) =>
+      tasks.push({ id: genId(), text: t, done: false, status: "todo" })
+    );
+    saveTasks();
+    activePanel = null;
+    closeModal();
+    render();
+  } catch (err) {
+    showModalStatus("Couldn't reach the server. Is it running?");
+  } finally {
+    modalGenerateBtn.disabled = false;
+  }
+}
+
+modalAddBtn.addEventListener("click", modalAdd);
+modalGenerateBtn.addEventListener("click", modalGenerate);
+modalCancelBtn.addEventListener("click", closeModal);
+modalCloseBtn.addEventListener("click", closeModal);
+addModal.addEventListener("click", (event) => {
+  if (event.target === addModal) closeModal();
+});
+modalTaskInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") modalAdd();
+});
+modalGoal.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") modalGenerate();
 });
 
 form.addEventListener("submit", (event) => {

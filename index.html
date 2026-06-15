@@ -42,6 +42,16 @@
 
     <main class="main">
       <div class="main-inner">
+        <div class="topbar">
+          <input
+            id="search"
+            class="search"
+            type="text"
+            placeholder="🔍 Search your tasks…"
+            autocomplete="off"
+          />
+        </div>
+
         <header class="main-header">
           <h1 id="view-title">All tasks</h1>
           <span id="task-counter" class="task-counter"></span>
@@ -52,14 +62,6 @@
 
         <!-- Task workspace: shown when a view (list/board/calendar) is active -->
         <div id="workspace">
-          <input
-            id="search"
-            class="search"
-            type="text"
-            placeholder="🔍 Search tasks…"
-            autocomplete="off"
-          />
-
           <form id="new-task-form" class="new-task">
             <input
               id="new-task-input"
@@ -142,6 +144,42 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div id="add-modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Add task</h2>
+        <button id="modal-close" class="modal-close" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <input
+        id="modal-task-input"
+        type="text"
+        placeholder="Task name… (try '#Work email Sara tomorrow')"
+        autocomplete="off"
+      />
+
+      <div class="modal-row">
+        <input id="modal-due" type="date" />
+        <input id="modal-project" type="text" placeholder="Project (optional)" autocomplete="off" />
+      </div>
+
+      <div class="modal-ai">
+        <div class="modal-ai-label">✨ Or let AI write the tasks from an idea</div>
+        <div class="modal-ai-row">
+          <input id="modal-goal" type="text" placeholder="e.g. Plan a product launch" autocomplete="off" />
+          <button id="modal-generate" type="button">Generate</button>
+        </div>
+      </div>
+
+      <p id="modal-status" class="modal-status" hidden></p>
+
+      <div class="modal-actions">
+        <button id="modal-cancel" class="ghost" type="button">Cancel</button>
+        <button id="modal-add" type="button">Add task</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
