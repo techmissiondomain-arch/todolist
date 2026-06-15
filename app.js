@@ -181,7 +181,7 @@ function renderList() {
   let shown = 0;
 
   tasks.forEach((task, index) => {
-    if (!matchesFilter(task)) return;
+    if (!matchesFilter(task) || task.done) return; // List shows only open tasks
     shown += 1;
 
     const li = document.createElement("li");
@@ -270,9 +270,9 @@ function renderList() {
     const empty = document.createElement("li");
     empty.className = "empty-state";
     empty.textContent =
-      searchTerm || activeProject !== "all"
-        ? "No matching tasks."
-        : "No tasks yet — add one above, or describe a goal and ✨ Generate.";
+      searchTerm || activeProject !== "all" || smartFilter
+        ? "No matching open tasks."
+        : "No open tasks — you're all caught up! 🎉";
     list.appendChild(empty);
   }
 }
@@ -731,73 +731,30 @@ const addModal = document.getElementById("add-modal");
 const modalTaskInput = document.getElementById("modal-task-input");
 const modalDue = document.getElementById("modal-due");
 const modalProject = document.getElementById("modal-project");
-const modalGoal = document.getElementById("modal-goal");
-const modalGenerateBtn = document.getElementById("modal-generate");
 const modalStatus = document.getElementById("modal-status");
-const modalPreview = document.getElementById("modal-preview");
 const modalAddBtn = document.getElementById("modal-add");
 const modalCancelBtn = document.getElementById("modal-cancel");
 const modalCloseBtn = document.getElementById("modal-close");
-
-let stagedTasks = []; // AI-generated tasks waiting for the user to confirm
 
 function showModalStatus(message) {
   modalStatus.textContent = message;
   modalStatus.hidden = !message;
 }
 
-// Show the AI-generated tasks inside the modal so the user can review/remove
-// them before committing.
-function renderPreview() {
-  modalPreview.innerHTML = "";
-  if (stagedTasks.length === 0) {
-    modalPreview.hidden = true;
-    return;
-  }
-  modalPreview.hidden = false;
-
-  const label = document.createElement("div");
-  label.className = "modal-preview-label";
-  label.textContent = `${stagedTasks.length} task${stagedTasks.length > 1 ? "s" : ""} ready — review, then click “Add task”:`;
-  modalPreview.appendChild(label);
-
-  stagedTasks.forEach((text, i) => {
-    const row = document.createElement("div");
-    row.className = "preview-row";
-    const span = document.createElement("span");
-    span.textContent = text;
-    const del = document.createElement("button");
-    del.className = "delete";
-    del.textContent = "×";
-    del.title = "Remove";
-    del.addEventListener("click", () => {
-      stagedTasks.splice(i, 1);
-      renderPreview();
-    });
-    row.append(span, del);
-    modalPreview.appendChild(row);
-  });
-}
-
 function openModal() {
   modalTaskInput.value = "";
-  modalGoal.value = "";
   modalDue.value = "";
   modalProject.value = "";
-  stagedTasks = [];
-  renderPreview();
   showModalStatus("");
   addModal.hidden = false;
   modalTaskInput.focus();
 }
 
 function closeModal() {
-  stagedTasks = [];
-  renderPreview();
   addModal.hidden = true;
 }
 
-// Clear filters/view so freshly added tasks are actually visible.
+// Clear filters/view so a freshly added task is actually visible.
 function resetToAllTasks() {
   activePanel = null;
   smartFilter = null;
@@ -810,71 +767,26 @@ function resetToAllTasks() {
   localStorage.setItem("todolist.smart", "");
 }
 
-// Generate tasks with AI and stage them inside the modal for review.
-async function modalGenerate() {
-  const goal = modalGoal.value.trim() || modalTaskInput.value.trim();
-  if (goal === "") {
-    showModalStatus("Type an idea or goal to generate from.");
-    return;
-  }
-  modalGenerateBtn.disabled = true;
-  showModalStatus("✨ Thinking…");
-  try {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal: goal }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showModalStatus(data.error || "Something went wrong.");
-      return;
-    }
-    stagedTasks.push(...data.tasks);
-    modalGoal.value = "";
-    showModalStatus(`Generated ${data.tasks.length}. Review below, then “Add task”.`);
-    renderPreview();
-  } catch (err) {
-    showModalStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    modalGenerateBtn.disabled = false;
-  }
-}
-
-// Commit the typed task (if any) plus any staged AI tasks.
 function modalAdd() {
-  const toAdd = [];
-
   const raw = modalTaskInput.value.trim();
-  if (raw !== "") {
-    const parsed = parseQuickAdd(raw);
-    const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
-    const project = modalProject.value.trim() || parsed.project;
-    if (project) task.project = project;
-    const due = modalDue.value || parsed.due;
-    if (due) task.due = due;
-    toAdd.push(task);
-  }
-
-  stagedTasks.forEach((text) => {
-    toAdd.push({ id: genId(), text: text, done: false, status: "todo" });
-  });
-
-  if (toAdd.length === 0) {
-    showModalStatus("Type a task, or generate some with AI first.");
+  if (raw === "") {
+    showModalStatus("Type a task name.");
     return;
   }
-
-  toAdd.forEach((t) => tasks.push(t));
+  const parsed = parseQuickAdd(raw);
+  const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
+  const project = modalProject.value.trim() || parsed.project;
+  if (project) task.project = project;
+  const due = modalDue.value || parsed.due;
+  if (due) task.due = due;
+  tasks.push(task);
   saveTasks();
-  stagedTasks = [];
-  resetToAllTasks(); // make sure the new tasks are visible
+  resetToAllTasks();
   closeModal();
   render();
 }
 
 modalAddBtn.addEventListener("click", modalAdd);
-modalGenerateBtn.addEventListener("click", modalGenerate);
 modalCancelBtn.addEventListener("click", closeModal);
 modalCloseBtn.addEventListener("click", closeModal);
 addModal.addEventListener("click", (event) => {
@@ -882,9 +794,6 @@ addModal.addEventListener("click", (event) => {
 });
 modalTaskInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") modalAdd();
-});
-modalGoal.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") modalGenerate();
 });
 
 form.addEventListener("submit", (event) => {
@@ -925,220 +834,13 @@ function taskTexts() {
   return tasks.map((task) => task.text);
 }
 
-// --- AI: generate tasks from a goal ---------------------------------------
-const goalInput = document.getElementById("ai-goal-input");
-const generateBtn = document.getElementById("ai-generate-btn");
-
-async function generateTasks() {
-  const goal = goalInput.value.trim();
-  if (goal === "") {
-    return;
-  }
-  generateBtn.disabled = true;
-  showStatus("Thinking…");
-  try {
-    const data = await callApi("/api/generate", { goal: goal });
-    if (data) {
-      data.tasks.forEach((task) => addTask(task));
-      goalInput.value = "";
-      showStatus(`Added ${data.tasks.length} tasks.`);
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    generateBtn.disabled = false;
-  }
-}
-
-generateBtn.addEventListener("click", generateTasks);
-goalInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") generateTasks();
-});
-
-// --- AI: prioritize (reorder) ---------------------------------------------
-const prioritizeBtn = document.getElementById("ai-prioritize-btn");
-
-async function prioritizeTasks() {
-  if (tasks.length < 2) {
-    showStatus("Add at least two tasks first.");
-    return;
-  }
-  prioritizeBtn.disabled = true;
-  showStatus("Prioritizing…");
-  try {
-    const data = await callApi("/api/prioritize", { tasks: taskTexts() });
-    if (data) {
-      tasks = data.order.map((position) => tasks[position]);
-      saveTasks();
-      render();
-      showStatus("Reordered — most important first.");
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    prioritizeBtn.disabled = false;
-  }
-}
-
-prioritizeBtn.addEventListener("click", prioritizeTasks);
-
-// --- AI: score each task 0–100, then sort by score ------------------------
-const scoreBtn = document.getElementById("ai-score-btn");
-
-async function scoreTasks() {
-  if (tasks.length < 1) {
-    showStatus("Add a task first.");
-    return;
-  }
-  scoreBtn.disabled = true;
-  showStatus("Scoring…");
-  try {
-    const data = await callApi("/api/score", { tasks: taskTexts() });
-    if (data) {
-      data.scores.forEach((score, i) => {
-        tasks[i].score = score;
-      });
-      tasks.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
-      saveTasks();
-      render();
-      showStatus("Scored and sorted by priority.");
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    scoreBtn.disabled = false;
-  }
-}
-
-scoreBtn.addEventListener("click", scoreTasks);
-
-// --- AI: schedule into Today / This week / Later --------------------------
-const scheduleBtn = document.getElementById("ai-schedule-btn");
-const SCHEDULE_ORDER = { today: 0, this_week: 1, later: 2 };
-
-async function scheduleTasks() {
-  if (tasks.length < 1) {
-    showStatus("Add a task first.");
-    return;
-  }
-  scheduleBtn.disabled = true;
-  showStatus("Planning…");
-  try {
-    const data = await callApi("/api/schedule", { tasks: taskTexts() });
-    if (data) {
-      data.buckets.forEach((bucket, i) => {
-        tasks[i].schedule = bucket;
-      });
-      tasks.sort(
-        (a, b) => (SCHEDULE_ORDER[a.schedule] ?? 3) - (SCHEDULE_ORDER[b.schedule] ?? 3)
-      );
-      saveTasks();
-      render();
-      showStatus("Planned — Today first, then this week, then later.");
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    scheduleBtn.disabled = false;
-  }
-}
-
-scheduleBtn.addEventListener("click", scheduleTasks);
-
-// --- AI: organize the inbox (project + score + due) -----------------------
-const organizeBtn = document.getElementById("ai-organize-btn");
-
-async function organizeTasks() {
-  if (tasks.length < 1) {
-    showStatus("Add a task first.");
-    return;
-  }
-  organizeBtn.disabled = true;
-  showStatus("Organizing…");
-  try {
-    const data = await callApi("/api/organize", { tasks: taskTexts() });
-    if (data) {
-      data.items.forEach((item, i) => {
-        tasks[i].project = item.project || null;
-        tasks[i].score = item.score;
-        if (item.due) tasks[i].due = item.due;
-      });
-      saveTasks();
-      render();
-      showStatus("Organized — projects, priorities, and due dates added.");
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    organizeBtn.disabled = false;
-  }
-}
-
-organizeBtn.addEventListener("click", organizeTasks);
-
-// --- AI: ask a question about the tasks -----------------------------------
-const askInput = document.getElementById("ai-ask-input");
-const askBtn = document.getElementById("ai-ask-btn");
+// --- Shared answer area (used by Notes summary / Meeting extract) ----------
 const answerEl = document.getElementById("ai-answer");
-const projectcheckBtn = document.getElementById("ai-projectcheck-btn");
 
 function showAnswer(message) {
   answerEl.textContent = message;
   answerEl.hidden = !message;
 }
-
-async function askTasks() {
-  const question = askInput.value.trim();
-  if (question === "") {
-    return;
-  }
-  askBtn.disabled = true;
-  showAnswer("");
-  showStatus("Thinking…");
-  try {
-    const data = await callApi("/api/ask", { question: question, tasks: taskTexts() });
-    if (data) {
-      showStatus("");
-      showAnswer(data.answer || "No answer.");
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    askBtn.disabled = false;
-  }
-}
-
-askBtn.addEventListener("click", askTasks);
-askInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") askTasks();
-});
-
-// --- AI: project check (risk + on-track summary) --------------------------
-async function projectCheck() {
-  if (tasks.length < 1) {
-    showStatus("Add a task first.");
-    return;
-  }
-  projectcheckBtn.disabled = true;
-  showAnswer("");
-  showStatus("Checking…");
-  try {
-    const payload = {
-      tasks: tasks.map((t) => ({ text: t.text, done: !!t.done, due: t.due || null })),
-    };
-    const data = await callApi("/api/projectcheck", payload);
-    if (data) {
-      showStatus("");
-      showAnswer("🔮 " + (data.summary || "No summary."));
-    }
-  } catch (err) {
-    showStatus("Couldn't reach the server. Is it running?");
-  } finally {
-    projectcheckBtn.disabled = false;
-  }
-}
-
-projectcheckBtn.addEventListener("click", projectCheck);
 
 // --- Recurring tasks -------------------------------------------------------
 const REPEATS = ["none", "daily", "weekly", "monthly"];

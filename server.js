@@ -37,30 +37,41 @@ async function askGemini({ system, prompt, schema }) {
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-  const aiResponse = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    }),
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: schema,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   });
 
-  if (!aiResponse.ok) {
+  // Free tier can briefly rate-limit (429). Retry a couple of times with a
+  // short backoff so a transient spike doesn't surface as an error.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const aiResponse = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body,
+    });
+
+    if (aiResponse.ok) {
+      const data = await aiResponse.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+      return JSON.parse(text);
+    }
+
+    if (aiResponse.status === 429 && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+      continue;
+    }
+
     const err = new Error("gemini error");
     err.status = aiResponse.status;
     err.detail = await aiResponse.text();
     throw err;
   }
-
-  const data = await aiResponse.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-  return JSON.parse(text);
 }
 
 // Turn any AI failure into a friendly message for the browser.

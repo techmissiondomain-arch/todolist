@@ -74,32 +74,7 @@
             <button type="submit">Add</button>
           </form>
 
-          <div class="ai-generate">
-            <input
-              id="ai-goal-input"
-              type="text"
-              placeholder="Or describe a goal, e.g. Plan a birthday party"
-              autocomplete="off"
-            />
-            <button id="ai-generate-btn" type="button">✨ Generate</button>
-          </div>
-
-          <div class="ai-ask">
-            <input
-              id="ai-ask-input"
-              type="text"
-              placeholder="Ask about your tasks, e.g. What should I do first?"
-              autocomplete="off"
-            />
-            <button id="ai-ask-btn" type="button">Ask</button>
-          </div>
-
           <div class="list-tools">
-            <button id="ai-prioritize-btn" type="button">🔼 Prioritize</button>
-            <button id="ai-score-btn" type="button">📊 Score</button>
-            <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
-            <button id="ai-organize-btn" type="button">📥 Organize</button>
-            <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
             <button id="select-toggle" type="button">☑️ Select</button>
           </div>
 
@@ -174,17 +149,8 @@
         <input id="modal-project" type="text" placeholder="Project (optional)" autocomplete="off" />
       </div>
 
-      <div class="modal-ai">
-        <div class="modal-ai-label">✨ Or let AI write the tasks from an idea</div>
-        <div class="modal-ai-row">
-          <input id="modal-goal" type="text" placeholder="e.g. Plan a product launch" autocomplete="off" />
-          <button id="modal-generate" type="button">Generate</button>
-        </div>
-      </div>
-
-      <div id="modal-preview" class="modal-preview" hidden></div>
-
       <p id="modal-status" class="modal-status" hidden></p>
+      <p class="modal-hint">Need ideas? Open 💬 Assistant and ask it to create tasks for you.</p>
 
       <div class="modal-actions">
         <button id="modal-cancel" class="ghost" type="button">Cancel</button>

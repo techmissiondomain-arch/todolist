@@ -1244,6 +1244,44 @@ input[type="checkbox"] {
   cursor: grabbing;
 }
 
+/* --- Board polish (expert) ------------------------------------------------ */
+.board {
+  gap: 14px;
+}
+
+.board-col {
+  border-top: 3px solid var(--border);
+  min-height: 150px;
+}
+
+.board-col:nth-child(1) { border-top-color: #94a3b8; } /* To do */
+.board-col:nth-child(2) { border-top-color: #f59e0b; } /* In progress */
+.board-col:nth-child(3) { border-top-color: #16a34a; } /* Done */
+
+.board-col-title {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.card {
+  transition: box-shadow 0.12s ease, transform 0.08s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.card.done {
+  opacity: 0.72;
+}
+
+.modal-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
 /* --- Small screens -------------------------------------------------------- */
 @media (max-width: 720px) {
   .sidebar { width: 200px; }
