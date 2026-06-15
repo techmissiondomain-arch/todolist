@@ -283,6 +283,19 @@ function renderBoard() {
   STATUSES.forEach((status) => {
     const col = document.createElement("div");
     col.className = "board-col";
+    col.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      col.classList.add("drag-over");
+    });
+    col.addEventListener("dragleave", () => col.classList.remove("drag-over"));
+    col.addEventListener("drop", (event) => {
+      event.preventDefault();
+      col.classList.remove("drag-over");
+      const id = event.dataTransfer.getData("text/plain");
+      const idx = tasks.findIndex((t) => t.id === id);
+      if (idx >= 0) setStatus(idx, status);
+    });
 
     const count = tasks.filter((t) => matchesFilter(t) && getStatus(t) === status).length;
     const header = document.createElement("h3");
@@ -302,6 +315,13 @@ function renderBoard() {
 function buildCard(task, index) {
   const card = document.createElement("div");
   card.className = "card" + (task.done ? " done" : "");
+  card.draggable = true;
+  card.addEventListener("dragstart", (event) => {
+    event.dataTransfer.setData("text/plain", task.id);
+    event.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
 
   const text = document.createElement("div");
   text.className = "card-text";

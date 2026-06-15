@@ -1276,6 +1276,21 @@ input[type="checkbox"] {
   opacity: 0.72;
 }
 
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.board-col.drag-over {
+  background: var(--accent-soft);
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+
 .modal-hint {
   font-size: 12px;
   color: var(--muted);
