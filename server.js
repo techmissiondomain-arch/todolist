@@ -23,7 +23,9 @@ const app = express();
 app.use(express.json());
 app.use(express.static(__dirname)); // serve the front-end files
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Tried in order; each has its own free-tier quota, so if one is exhausted the
+// next is used automatically.
+const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"];
 
 // Shared helper: ask Gemini a question and get back JSON matching `schema`.
 // `thinkingBudget: 0` turns off the model's slow "thinking" step — for these
@@ -36,7 +38,6 @@ async function askGemini({ system, prompt, schema }) {
     throw err;
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ parts: [{ text: prompt }] }],
@@ -47,9 +48,11 @@ async function askGemini({ system, prompt, schema }) {
     },
   });
 
-  // Free tier can briefly rate-limit (429). Retry a couple of times with a
-  // short backoff so a transient spike doesn't surface as an error.
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // Each model has its own free-tier quota. If one is rate-limited (429),
+  // fall back to the next so the assistant keeps working.
+  let lastError;
+  for (const model of GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const aiResponse = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,16 +65,13 @@ async function askGemini({ system, prompt, schema }) {
       return JSON.parse(text);
     }
 
-    if (aiResponse.status === 429 && attempt < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
-      continue;
-    }
-
-    const err = new Error("gemini error");
-    err.status = aiResponse.status;
-    err.detail = await aiResponse.text();
-    throw err;
+    lastError = new Error("gemini error");
+    lastError.status = aiResponse.status;
+    lastError.detail = await aiResponse.text();
+    if (aiResponse.status === 429) continue; // try the next model
+    throw lastError;
   }
+  throw lastError;
 }
 
 // Turn any AI failure into a friendly message for the browser.
