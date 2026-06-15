@@ -121,7 +121,7 @@ function appendBadges(container, task) {
 
 // --- Rendering ------------------------------------------------------------
 const SMART_TITLES = { today: "Today", overdue: "Overdue", upcoming: "Upcoming" };
-const PANEL_TITLES = { stats: "Stats", notes: "Notes", meeting: "Meeting" };
+const PANEL_TITLES = { assistant: "Assistant", stats: "Stats", notes: "Notes", meeting: "Meeting" };
 const smartNav = document.querySelectorAll(".nav-item.smart");
 
 // Open an insight panel (or toggle it off, returning to the task views).
@@ -152,6 +152,7 @@ function render() {
   statsPanel.hidden = activePanel !== "stats";
   notesPanel.hidden = activePanel !== "notes";
   meetingPanel.hidden = activePanel !== "meeting";
+  assistantPanel.hidden = activePanel !== "assistant";
 
   if (onTasks) {
     list.hidden = view !== "list";
@@ -170,6 +171,8 @@ function render() {
     renderStats();
   } else if (activePanel === "notes") {
     renderNotes();
+  } else if (activePanel === "assistant") {
+    renderChat();
   }
 }
 
@@ -1431,6 +1434,91 @@ async function extractMeeting() {
 }
 
 meetingExtract.addEventListener("click", extractMeeting);
+
+// --- AI assistant chat -----------------------------------------------------
+const assistantPanel = document.getElementById("assistant-panel");
+const chatLog = document.getElementById("chat-log");
+const chatInput = document.getElementById("chat-input");
+const chatSendBtn = document.getElementById("chat-send");
+let chatHistory = [];
+
+function renderChat() {
+  chatLog.innerHTML = "";
+  if (chatHistory.length === 0) {
+    const hint = document.createElement("div");
+    hint.className = "chat-empty";
+    hint.textContent = "Ask me to plan something, add tasks, or tell you what to do next.";
+    chatLog.appendChild(hint);
+  }
+  chatHistory.forEach((m) => {
+    const bubble = document.createElement("div");
+    bubble.className = "chat-msg " + m.role + (m.pending ? " pending" : "");
+    bubble.textContent = m.content;
+    chatLog.appendChild(bubble);
+  });
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+async function sendChat() {
+  const message = chatInput.value.trim();
+  if (message === "") return;
+
+  const priorHistory = chatHistory.filter((m) => !m.pending).slice(-8);
+  chatHistory.push({ role: "user", content: message });
+  chatInput.value = "";
+  chatHistory.push({ role: "assistant", content: "…", pending: true });
+  renderChat();
+  chatSendBtn.disabled = true;
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: message,
+        tasks: tasks.map((t) => ({
+          text: t.text,
+          done: !!t.done,
+          project: t.project || null,
+          due: t.due || null,
+        })),
+        history: priorHistory.map((m) => ({ role: m.role, content: m.content })),
+      }),
+    });
+    const data = await res.json();
+    chatHistory = chatHistory.filter((m) => !m.pending);
+
+    if (!res.ok) {
+      chatHistory.push({ role: "assistant", content: data.error || "Something went wrong." });
+      renderChat();
+      return;
+    }
+
+    chatHistory.push({ role: "assistant", content: data.reply || "" });
+    if (Array.isArray(data.tasks) && data.tasks.length) {
+      data.tasks.forEach((t) =>
+        tasks.push({ id: genId(), text: t, done: false, status: "todo" })
+      );
+      saveTasks();
+      chatHistory.push({
+        role: "assistant",
+        content: `✅ Added ${data.tasks.length} task${data.tasks.length > 1 ? "s" : ""}: ${data.tasks.join(", ")}`,
+      });
+    }
+    renderChat();
+  } catch (err) {
+    chatHistory = chatHistory.filter((m) => !m.pending);
+    chatHistory.push({ role: "assistant", content: "Couldn't reach the server. Is it running?" });
+    renderChat();
+  } finally {
+    chatSendBtn.disabled = false;
+  }
+}
+
+chatSendBtn.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") sendChat();
+});
 
 // --- Dark mode -------------------------------------------------------------
 const THEME_KEY = "todolist.theme";

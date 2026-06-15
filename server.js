@@ -8,6 +8,7 @@
 //   /api/projectcheck — AI project-manager risk + on-track summary
 //   /api/meeting    — extract action items from meeting notes
 //   /api/notes-summary — summarize the knowledge-base notes
+//   /api/chat       — conversational assistant that can also create tasks
 //
 // All AI endpoints use Google Gemini's free API. Your key lives here on the
 // server (loaded from .env), never in the browser.
@@ -403,6 +404,56 @@ app.post("/api/notes-summary", async (req, res) => {
       },
     });
     res.json({ summary: typeof result.summary === "string" ? result.summary : "" });
+  } catch (err) {
+    handleAiError(err, res);
+  }
+});
+
+// --- Conversational assistant: reply + tasks to create --------------------
+app.post("/api/chat", async (req, res) => {
+  const message = (req.body?.message || "").trim();
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+  const history = Array.isArray(req.body?.history) ? req.body.history : [];
+  if (!message) {
+    return res.status(400).json({ error: "Type a message first." });
+  }
+
+  const taskList = tasks.length
+    ? tasks
+        .map((t, i) => {
+          const meta = [t.done ? "done" : null, t.project ? `#${t.project}` : null, t.due ? `due ${t.due}` : null]
+            .filter(Boolean)
+            .join(", ");
+          return `${i + 1}. ${t.text}${meta ? ` (${meta})` : ""}`;
+        })
+        .join("\n")
+    : "(no tasks yet)";
+  const convo = history
+    .map((h) => `${h.role === "user" ? "User" : "Assistant"}: ${h.content}`)
+    .join("\n");
+
+  try {
+    const result = await askGemini({
+      system:
+        "You are a friendly assistant inside a to-do app. Reply conversationally and " +
+        "concisely (1-3 sentences). If the user asks you to add, create, plan, break down, " +
+        "or organize work, put the new tasks to create in 'tasks' as short imperative phrases " +
+        "(start with a verb). If they're only asking a question, leave 'tasks' empty and just " +
+        "answer in 'reply'. Never invent tasks the user didn't ask for.",
+      prompt: `Current tasks:\n${taskList}\n\nConversation so far:\n${convo || "(none)"}\n\nUser: ${message}`,
+      schema: {
+        type: "object",
+        properties: {
+          reply: { type: "string" },
+          tasks: { type: "array", items: { type: "string" } },
+        },
+        required: ["reply", "tasks"],
+      },
+    });
+    res.json({
+      reply: typeof result.reply === "string" ? result.reply : "",
+      tasks: Array.isArray(result.tasks) ? result.tasks : [],
+    });
   } catch (err) {
     handleAiError(err, res);
   }

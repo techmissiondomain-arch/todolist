@@ -1099,6 +1099,81 @@ input[type="checkbox"] {
   margin-bottom: 4px;
 }
 
+/* --- Assistant chat ------------------------------------------------------- */
+.chat-log {
+  min-height: 240px;
+  max-height: 52vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chat-empty {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.chat-msg {
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.chat-msg.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-msg.assistant {
+  align-self: flex-start;
+  background: var(--accent-soft);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-msg.pending {
+  opacity: 0.6;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input-row input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.chat-input-row button {
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-input-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* --- Bulk select + drag --------------------------------------------------- */
 .list-tools button.active {
   background: var(--accent-soft);

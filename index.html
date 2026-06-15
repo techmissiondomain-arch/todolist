@@ -22,6 +22,7 @@
 
       <div class="nav-section">Insights</div>
       <nav class="nav">
+        <button class="nav-item insight" data-panel="assistant"><span>💬 Assistant</span></button>
         <button class="nav-item insight" data-panel="stats"><span>📈 Stats</span></button>
         <button class="nav-item insight" data-panel="notes"><span>📝 Notes</span></button>
         <button class="nav-item insight" data-panel="meeting"><span>🎙️ Meeting</span></button>
@@ -141,6 +142,14 @@
         <div id="meeting-panel" class="panel" hidden>
           <textarea id="meeting-notes" placeholder="Paste meeting notes or a transcript…"></textarea>
           <button id="meeting-extract" type="button">Extract action items</button>
+        </div>
+
+        <div id="assistant-panel" class="panel" hidden>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Ask me anything, or tell me what to add…" autocomplete="off" />
+            <button id="chat-send" type="button">Send</button>
+          </div>
         </div>
       </div>
     </main>
