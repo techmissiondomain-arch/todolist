@@ -25,6 +25,13 @@
         <button id="meeting-toggle" class="nav-item"><span>🎙️ Meeting</span></button>
       </nav>
 
+      <div class="nav-section">Smart lists</div>
+      <nav class="nav">
+        <button class="nav-item smart" data-smart="today"><span>📌 Today</span></button>
+        <button class="nav-item smart" data-smart="overdue"><span>⚠️ Overdue</span></button>
+        <button class="nav-item smart" data-smart="upcoming"><span>🔜 Upcoming</span></button>
+      </nav>
+
       <div class="nav-section">Projects</div>
       <nav id="project-nav" class="nav project-nav"></nav>
 
@@ -85,6 +92,7 @@
           <button id="ai-schedule-btn" type="button">🗓️ Plan week</button>
           <button id="ai-organize-btn" type="button">📥 Organize</button>
           <button id="ai-projectcheck-btn" type="button">🔮 Project check</button>
+          <button id="select-toggle" type="button">☑️ Select</button>
         </div>
 
         <div id="stats-panel" class="panel" hidden></div>
@@ -105,6 +113,15 @@
         <div id="meeting-panel" class="panel" hidden>
           <textarea id="meeting-notes" placeholder="Paste meeting notes or a transcript…"></textarea>
           <button id="meeting-extract" type="button">Extract action items</button>
+        </div>
+
+        <div id="bulk-bar" class="bulk-bar" hidden>
+          <span id="bulk-count">0 selected</span>
+          <button data-bulk="complete" type="button">✓ Complete</button>
+          <button data-bulk="todo" type="button">↩ To do</button>
+          <button data-bulk="in_progress" type="button">▶ In progress</button>
+          <button data-bulk="delete" type="button">🗑 Delete</button>
+          <button data-bulk="clear" type="button">✕</button>
         </div>
 
         <ul id="task-list" class="task-list"></ul>

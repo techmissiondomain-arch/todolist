@@ -911,6 +911,58 @@ input[type="checkbox"] {
   margin-bottom: 4px;
 }
 
+/* --- Bulk select + drag --------------------------------------------------- */
+.list-tools button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.bulk-bar span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-right: auto;
+}
+
+.bulk-bar button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.bulk-bar button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 14px;
+  user-select: none;
+  line-height: 1;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
 /* --- Small screens -------------------------------------------------------- */
 @media (max-width: 720px) {
   .sidebar { width: 200px; }

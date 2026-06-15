@@ -25,6 +25,7 @@ An AI-powered task manager with a clean dashboard (sidebar + List / Board / Cale
 - **🔍 Search tasks** and **🌙 dark mode** (both remembered between visits)
 - **⚡ Quick add** — type `#Work email Sara tomorrow` to set project + due date automatically
 - **🗒️ Task details**, note **project tags**, and **🧠 AI note summaries**
+- **📌 Smart lists** (Today / Overdue / Upcoming), **bulk select-and-act**, **drag-to-reorder**, and **keyboard shortcuts** (`n` = new task, `/` = search)
 
 ## How to run
 

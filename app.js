@@ -19,11 +19,22 @@ const viewTitle = document.getElementById("view-title");
 let tasks = loadTasks();
 let view = localStorage.getItem("todolist.view") || "list"; // list / board / calendar
 let activeProject = localStorage.getItem("todolist.filter") || "all";
+let smartFilter = localStorage.getItem("todolist.smart") || null; // today / overdue / upcoming
 let searchTerm = "";
+let selectMode = false;
+const selected = new Set();
+
+function genId() {
+  return "t" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+}
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  return saved ? JSON.parse(saved) : [];
+  const arr = saved ? JSON.parse(saved) : [];
+  arr.forEach((t) => {
+    if (!t.id) t.id = genId();
+  });
+  return arr;
 }
 
 function saveTasks() {
@@ -73,7 +84,12 @@ function moveStatus(index, direction) {
 function matchesFilter(task) {
   const projectOk = activeProject === "all" || (task.project || "") === activeProject;
   const searchOk = searchTerm === "" || task.text.toLowerCase().includes(searchTerm);
-  return projectOk && searchOk;
+  const today = todayString();
+  let smartOk = true;
+  if (smartFilter === "today") smartOk = !task.done && task.due && task.due <= today;
+  else if (smartFilter === "overdue") smartOk = isOverdue(task);
+  else if (smartFilter === "upcoming") smartOk = !task.done && task.due && task.due > today;
+  return projectOk && searchOk && smartOk;
 }
 
 // Add the project / score / schedule badges (whichever the task has) to a row.
@@ -100,10 +116,18 @@ function appendBadges(container, task) {
 }
 
 // --- Rendering ------------------------------------------------------------
+const SMART_TITLES = { today: "Today", overdue: "Overdue", upcoming: "Upcoming" };
+const smartNav = document.querySelectorAll(".nav-item.smart");
+
 function render() {
   updateProjectNav();
   viewNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
-  viewTitle.textContent = activeProject === "all" ? "All tasks" : activeProject;
+  smartNav.forEach((btn) => btn.classList.toggle("active", btn.dataset.smart === smartFilter));
+  viewTitle.textContent = smartFilter
+    ? SMART_TITLES[smartFilter]
+    : activeProject === "all"
+      ? "All tasks"
+      : activeProject;
   list.hidden = view !== "list";
   boardEl.hidden = view !== "board";
   calendarEl.hidden = view !== "calendar";
@@ -115,6 +139,7 @@ function render() {
     renderCalendar();
   }
   updateProgress();
+  updateBulkBar();
   if (!statsPanel.hidden) {
     renderStats();
   }
@@ -135,6 +160,38 @@ function renderList() {
 
     const row = document.createElement("div");
     row.className = "task-row";
+
+    if (selectMode) {
+      const sel = document.createElement("input");
+      sel.type = "checkbox";
+      sel.className = "select-box";
+      sel.checked = selected.has(task.id);
+      sel.addEventListener("change", () => {
+        if (sel.checked) selected.add(task.id);
+        else selected.delete(task.id);
+        updateBulkBar();
+      });
+      row.appendChild(sel);
+    } else {
+      const handle = document.createElement("span");
+      handle.className = "drag-handle";
+      handle.textContent = "⠿";
+      handle.title = "Drag to reorder";
+      handle.draggable = true;
+      handle.addEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("text/plain", task.id);
+        event.dataTransfer.effectAllowed = "move";
+      });
+      row.appendChild(handle);
+      li.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      });
+      li.addEventListener("drop", (event) => {
+        event.preventDefault();
+        reorderTask(event.dataTransfer.getData("text/plain"), task.id);
+      });
+    }
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -400,7 +457,7 @@ function updateProgress() {
 }
 
 function addTask(text) {
-  tasks.push({ text: text, done: false, status: "todo" });
+  tasks.push({ id: genId(), text: text, done: false, status: "todo" });
   saveTasks();
   render();
 }
@@ -464,7 +521,7 @@ function parseQuickAdd(raw) {
 function addTaskFromText(raw) {
   const parsed = parseQuickAdd(raw);
   if (parsed.text === "") return;
-  const task = { text: parsed.text, done: false, status: "todo" };
+  const task = { id: genId(), text: parsed.text, done: false, status: "todo" };
   if (parsed.project) task.project = parsed.project;
   if (parsed.due) task.due = parsed.due;
   tasks.push(task);
@@ -479,14 +536,18 @@ function toggleTask(index) {
   task.status = nowDone ? "done" : "todo";
 
   // When a recurring task is completed, queue up its next occurrence.
+  // Roll forward from whichever is later (the old due date or today) so the
+  // next occurrence always lands in the future, even if this one was overdue.
   if (nowDone && task.repeat && task.repeat !== "none") {
+    const base = task.due && task.due > todayString() ? task.due : todayString();
     tasks.push({
+      id: genId(),
       text: task.text,
       done: false,
       status: "todo",
       repeat: task.repeat,
       project: task.project || null,
-      due: advanceDate(task.due || todayString(), task.repeat),
+      due: advanceDate(base, task.repeat),
     });
   }
 
@@ -536,6 +597,87 @@ viewNav.forEach((btn) => {
     localStorage.setItem("todolist.view", view);
     render();
   });
+});
+
+smartNav.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    smartFilter = smartFilter === btn.dataset.smart ? null : btn.dataset.smart;
+    localStorage.setItem("todolist.smart", smartFilter || "");
+    render();
+  });
+});
+
+// --- Bulk select + actions -------------------------------------------------
+const selectToggle = document.getElementById("select-toggle");
+const bulkBar = document.getElementById("bulk-bar");
+const bulkCount = document.getElementById("bulk-count");
+
+function updateBulkBar() {
+  bulkBar.hidden = !selectMode;
+  selectToggle.classList.toggle("active", selectMode);
+  bulkCount.textContent = `${selected.size} selected`;
+}
+
+selectToggle.addEventListener("click", () => {
+  selectMode = !selectMode;
+  if (!selectMode) selected.clear();
+  render();
+});
+
+bulkBar.addEventListener("click", (event) => {
+  const action = event.target.dataset.bulk;
+  if (!action) return;
+  if (action === "clear") {
+    selected.clear();
+    render();
+    return;
+  }
+  if (action === "delete") {
+    tasks = tasks.filter((t) => !selected.has(t.id));
+  } else {
+    const status = action === "complete" ? "done" : action;
+    tasks.forEach((t) => {
+      if (selected.has(t.id)) {
+        t.status = status;
+        t.done = status === "done";
+      }
+    });
+  }
+  selected.clear();
+  saveTasks();
+  render();
+});
+
+// --- Drag to reorder -------------------------------------------------------
+function reorderTask(sourceId, targetId) {
+  if (!sourceId || sourceId === targetId) return;
+  const from = tasks.findIndex((t) => t.id === sourceId);
+  if (from < 0) return;
+  const [moved] = tasks.splice(from, 1);
+  const to = tasks.findIndex((t) => t.id === targetId);
+  tasks.splice(to < 0 ? tasks.length : to, 0, moved);
+  saveTasks();
+  render();
+}
+
+// --- Keyboard shortcuts ----------------------------------------------------
+document.addEventListener("keydown", (event) => {
+  const tag = (event.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || event.target.isContentEditable) {
+    if (event.key === "Escape") event.target.blur();
+    return;
+  }
+  if (event.key === "n") {
+    event.preventDefault();
+    input.focus();
+  } else if (event.key === "/") {
+    event.preventDefault();
+    searchInput.focus();
+  } else if (event.key === "Escape" && selectMode) {
+    selectMode = false;
+    selected.clear();
+    render();
+  }
 });
 
 form.addEventListener("submit", (event) => {
