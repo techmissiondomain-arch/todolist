@@ -3,26 +3,207 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My To-Do List</title>
+  <title>TaskFlow — AI To-Do</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app">
-    <h1>My To-Do List</h1>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">✓</span> TaskFlow</div>
 
-    <form id="new-task-form" class="new-task">
+      <button id="add-task-btn" class="add-task-btn">＋ Add task</button>
+
+      <div class="nav-section">Views</div>
+      <nav class="nav">
+        <button class="nav-item" data-view="list"><span>📃 List</span></button>
+        <button class="nav-item" data-view="board"><span>📋 Board</span></button>
+        <button class="nav-item" data-view="calendar"><span>📅 Calendar</span></button>
+      </nav>
+
+      <div class="nav-section">Insights</div>
+      <nav class="nav">
+        <button class="nav-item insight" data-panel="assistant"><span>💬 Assistant</span></button>
+        <button class="nav-item insight" data-panel="stats"><span>📈 Stats</span></button>
+        <button class="nav-item insight" data-panel="notes"><span>📝 Notes</span></button>
+        <button class="nav-item insight" data-panel="meeting"><span>🎙️ Meeting</span></button>
+      </nav>
+
+      <div class="nav-section">Smart lists</div>
+      <nav class="nav">
+        <button class="nav-item smart" data-smart="today"><span>📌 Today</span></button>
+        <button class="nav-item smart" data-smart="overdue"><span>⚠️ Overdue</span></button>
+        <button class="nav-item smart" data-smart="upcoming"><span>🔜 Upcoming</span></button>
+      </nav>
+
+      <div class="nav-section">Projects</div>
+      <nav id="project-nav" class="nav project-nav"></nav>
+
+      <button id="theme-toggle" class="nav-item theme-toggle"><span>🌙 Dark mode</span></button>
+    </aside>
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="topbar">
+          <input
+            id="search"
+            class="search"
+            type="text"
+            placeholder="🔍 Search your tasks…"
+            autocomplete="off"
+          />
+        </div>
+
+        <header class="main-header">
+          <h1 id="view-title">All tasks</h1>
+          <span id="task-counter" class="task-counter"></span>
+        </header>
+
+        <p id="ai-status" class="ai-status" hidden></p>
+        <p id="ai-answer" class="ai-answer" hidden></p>
+
+        <!-- Task workspace: shown when a view (list/board/calendar) is active -->
+        <div id="workspace">
+          <form id="new-task-form" class="new-task">
+            <input
+              id="new-task-input"
+              type="text"
+              placeholder="Add a task… try '#Work email Sara tomorrow'"
+              autocomplete="off"
+              required
+            />
+            <button type="submit">Add</button>
+          </form>
+
+          <div class="list-tools">
+            <button id="select-toggle" type="button">☑️ Select</button>
+          </div>
+
+          <div id="bulk-bar" class="bulk-bar" hidden>
+            <span id="bulk-count">0 selected</span>
+            <button data-bulk="complete" type="button">✓ Complete</button>
+            <button data-bulk="todo" type="button">↩ To do</button>
+            <button data-bulk="in_progress" type="button">▶ In progress</button>
+            <button data-bulk="delete" type="button">🗑 Delete</button>
+            <button data-bulk="clear" type="button">✕</button>
+          </div>
+
+          <ul id="task-list" class="task-list"></ul>
+          <div id="board" class="board" hidden></div>
+          <div id="calendar" class="calendar" hidden></div>
+
+          <div class="list-footer">
+            <button id="clear-completed-btn" class="clear-completed" type="button" hidden>
+              Clear completed
+            </button>
+          </div>
+        </div>
+
+        <!-- Insight panels: each shown only when its sidebar item is active -->
+        <div id="stats-panel" class="panel" hidden></div>
+
+        <div id="notes-panel" class="panel" hidden>
+          <div class="note-form">
+            <input id="note-title" type="text" placeholder="Note title" autocomplete="off" />
+            <input id="note-project" type="text" placeholder="Project (optional)" autocomplete="off" />
+            <textarea id="note-body" placeholder="Write a note… (ideas, links, plans)"></textarea>
+            <div class="note-form-actions">
+              <button id="note-add" type="button">Add note</button>
+              <button id="note-summarize" type="button" class="ghost">✨ Summarize notes</button>
+            </div>
+          </div>
+          <ul id="notes-list" class="notes-list"></ul>
+        </div>
+
+        <div id="meeting-panel" class="panel" hidden>
+          <textarea id="meeting-notes" placeholder="Paste meeting notes or a transcript…"></textarea>
+          <button id="meeting-extract" type="button">Extract action items</button>
+        </div>
+
+        <div id="assistant-panel" class="panel" hidden>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Ask me anything, or tell me what to add…" autocomplete="off" />
+            <button id="chat-send" type="button">Send</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="add-modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Add task</h2>
+        <button id="modal-close" class="modal-close" type="button" aria-label="Close">✕</button>
+      </div>
+
       <input
-        id="new-task-input"
+        id="modal-task-input"
         type="text"
-        placeholder="What do you need to do?"
+        placeholder="Task name… (try '#Work email Sara tomorrow')"
         autocomplete="off"
-        required
       />
-      <button type="submit">Add</button>
-    </form>
 
-    <ul id="task-list" class="task-list"></ul>
-  </main>
+      <div class="modal-row">
+        <input id="modal-due" type="date" />
+        <input id="modal-project" type="text" placeholder="Project (optional)" autocomplete="off" />
+      </div>
+
+      <p id="modal-status" class="modal-status" hidden></p>
+      <p class="modal-hint">Need ideas? Open 💬 Assistant and ask it to create tasks for you.</p>
+
+      <div class="modal-actions">
+        <button id="modal-cancel" class="ghost" type="button">Cancel</button>
+        <button id="modal-add" type="button">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="task-modal" class="modal" hidden>
+    <div class="modal-card task-detail">
+      <div class="modal-header">
+        <span class="td-modal-title">Task</span>
+        <button id="td-close" class="modal-close" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="td-main">
+        <div class="td-title-row">
+          <input type="checkbox" id="td-done" />
+          <input id="td-title" class="td-title" type="text" />
+        </div>
+
+        <div class="td-top">
+          <div class="td-field">
+            <label for="td-project">Project</label>
+            <select id="td-project" class="td-project"></select>
+          </div>
+          <div class="td-field">
+            <label for="td-priority">Priority</label>
+            <select id="td-priority" class="td-priority">
+              <option value="">None</option>
+              <option value="P1">P1 · Urgent</option>
+              <option value="P2">P2 · High</option>
+              <option value="P3">P3 · Medium</option>
+              <option value="P4">P4 · Low</option>
+            </select>
+          </div>
+          <div class="td-field">
+            <label>Attachment</label>
+            <button id="td-attach-btn" type="button" class="td-attach-btn">📎 Add link</button>
+          </div>
+        </div>
+
+        <div id="td-attachments" class="td-attachments"></div>
+
+        <div class="td-section-label">Description</div>
+        <textarea id="td-description" class="td-desc" placeholder="Add details about this task…"></textarea>
+
+        <div class="td-section-label">Sub-tasks</div>
+        <div id="td-subtasks" class="td-subtasks"></div>
+        <input id="td-add-subtask" class="add-subtask" type="text" placeholder="+ Add sub-task" autocomplete="off" />
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

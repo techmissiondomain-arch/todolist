@@ -1,0 +1,12 @@
+{
+  "name": "todolist",
+  "version": "1.0.0",
+  "description": "A simple to-do list app with AI-powered task generation",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
