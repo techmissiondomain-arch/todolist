@@ -17,6 +17,8 @@ const projectNav = document.getElementById("project-nav");
 const viewTitle = document.getElementById("view-title");
 const workspace = document.getElementById("workspace");
 const addTaskBtn = document.getElementById("add-task-btn");
+const listTools = document.querySelector(".list-tools");
+const listFooter = document.querySelector(".list-footer");
 
 // Load any previously saved tasks, or start with an empty list.
 let tasks = loadTasks();
@@ -155,10 +157,16 @@ function render() {
   assistantPanel.hidden = activePanel !== "assistant";
 
   if (onTasks) {
-    list.hidden = view !== "list";
+    const isList = view === "list";
+    list.hidden = !isList;
     boardEl.hidden = view !== "board";
     calendarEl.hidden = view !== "calendar";
-    if (view === "list") {
+    // Quick-add, Select, and the footer belong to the List only — keep the
+    // Board and Calendar showing just their own content.
+    form.hidden = !isList;
+    listTools.hidden = !isList;
+    listFooter.hidden = !isList;
+    if (isList) {
       renderList();
     } else if (view === "board") {
       renderBoard();
@@ -674,7 +682,7 @@ const bulkBar = document.getElementById("bulk-bar");
 const bulkCount = document.getElementById("bulk-count");
 
 function updateBulkBar() {
-  bulkBar.hidden = !selectMode;
+  bulkBar.hidden = !(selectMode && view === "list");
   selectToggle.classList.toggle("active", selectMode);
   bulkCount.textContent = `${selected.size} selected`;
 }
