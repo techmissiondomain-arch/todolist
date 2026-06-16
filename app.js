@@ -1285,8 +1285,9 @@ const tdDescription = document.getElementById("td-description");
 const tdSubtasks = document.getElementById("td-subtasks");
 const tdAddSubtask = document.getElementById("td-add-subtask");
 const tdProject = document.getElementById("td-project");
+const tdPriority = document.getElementById("td-priority");
 const tdAttachments = document.getElementById("td-attachments");
-const tdAddAttachment = document.getElementById("td-add-attachment");
+const tdAttachBtn = document.getElementById("td-attach-btn");
 const tdClose = document.getElementById("td-close");
 
 let editingTaskId = null;
@@ -1319,6 +1320,7 @@ function openTaskModal(id) {
   tdDone.checked = !!t.done;
   tdTitle.value = t.text;
   populateProjectSelect(t.project);
+  tdPriority.value = t.priority || "";
   tdDescription.value = t.description || "";
   renderModalSubtasks();
   renderModalAttachments();
@@ -1404,6 +1406,14 @@ tdProject.addEventListener("change", () => {
   render();
 });
 
+tdPriority.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.priority = tdPriority.value || null;
+  saveTasks();
+  render();
+});
+
 function renderModalAttachments() {
   const t = getEditingTask();
   tdAttachments.innerHTML = "";
@@ -1430,13 +1440,13 @@ function renderModalAttachments() {
   });
 }
 
-tdAddAttachment.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" || tdAddAttachment.value.trim() === "") return;
+tdAttachBtn.addEventListener("click", () => {
   const t = getEditingTask();
   if (!t) return;
+  const url = (window.prompt("Paste a link to attach:") || "").trim();
+  if (url === "") return;
   if (!t.attachments) t.attachments = [];
-  t.attachments.push(tdAddAttachment.value.trim());
-  tdAddAttachment.value = "";
+  t.attachments.push(url);
   saveTasks();
   renderModalAttachments();
 });

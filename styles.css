@@ -578,15 +578,38 @@ input[type="checkbox"] {
 
 /* --- Task detail modal ---------------------------------------------------- */
 .modal-card.task-detail {
-  max-width: 560px;
+  max-width: 640px;
   width: 100%;
-  max-height: 88vh;
+  max-height: 90vh;
   overflow-y: auto;
   padding: 0;
   display: block;
 }
 
-.td-project {
+.td-top {
+  display: flex;
+  gap: 12px;
+  margin: 6px 0 12px;
+}
+
+.td-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.td-field label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.td-field select,
+.td-attach-btn {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -594,7 +617,17 @@ input[type="checkbox"] {
   background: var(--card);
   color: var(--text);
   font-size: 14px;
-  margin-bottom: 4px;
+}
+
+.td-attach-btn {
+  cursor: pointer;
+  text-align: left;
+}
+
+.td-attach-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .task-list li[draggable="true"] {
@@ -716,7 +749,7 @@ input[type="checkbox"] {
 
 .td-desc {
   width: 100%;
-  min-height: 90px;
+  min-height: 140px;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
@@ -741,13 +774,9 @@ input[type="checkbox"] {
   margin-bottom: 8px;
 }
 
-@media (max-width: 760px) {
-  .modal-card.task-detail {
-    grid-template-columns: 1fr;
-  }
-  .td-side {
-    border-left: none;
-    border-top: 1px solid var(--border);
+@media (max-width: 620px) {
+  .td-top {
+    flex-direction: column;
   }
 }
 
