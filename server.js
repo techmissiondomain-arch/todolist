@@ -21,7 +21,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(express.json());
-app.use(express.static(__dirname)); // serve the front-end files
+app.use(
+  express.static(__dirname, {
+    // Dev app: don't cache, so edits always show up on a normal refresh.
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => res.setHeader("Cache-Control", "no-store"),
+  })
+);
 
 // Tried in order; each has its own free-tier quota, so if one is exhausted the
 // next is used automatically.
