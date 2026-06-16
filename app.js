@@ -218,16 +218,14 @@ function renderList() {
       });
       row.appendChild(sel);
     } else {
-      const handle = document.createElement("span");
-      handle.className = "drag-handle";
-      handle.textContent = "⠿";
-      handle.title = "Drag to reorder";
-      handle.draggable = true;
-      handle.addEventListener("dragstart", (event) => {
+      // Drag the whole task to reorder (no separate handle).
+      li.draggable = true;
+      li.addEventListener("dragstart", (event) => {
         event.dataTransfer.setData("text/plain", task.id);
         event.dataTransfer.effectAllowed = "move";
+        li.classList.add("dragging");
       });
-      row.appendChild(handle);
+      li.addEventListener("dragend", () => li.classList.remove("dragging"));
       li.addEventListener("dragover", (event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
@@ -1287,9 +1285,6 @@ const tdDescription = document.getElementById("td-description");
 const tdSubtasks = document.getElementById("td-subtasks");
 const tdAddSubtask = document.getElementById("td-add-subtask");
 const tdProject = document.getElementById("td-project");
-const tdDue = document.getElementById("td-due");
-const tdPriority = document.getElementById("td-priority");
-const tdStatus = document.getElementById("td-status");
 const tdAttachments = document.getElementById("td-attachments");
 const tdAddAttachment = document.getElementById("td-add-attachment");
 const tdClose = document.getElementById("td-close");
@@ -1300,17 +1295,31 @@ function getEditingTask() {
   return tasks.find((t) => t.id === editingTaskId) || null;
 }
 
+// Fill the Project dropdown with the projects currently in use.
+function populateProjectSelect(current) {
+  const projects = [...new Set(tasks.map((t) => t.project).filter(Boolean))].sort();
+  tdProject.innerHTML = "";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "No project";
+  tdProject.appendChild(none);
+  projects.forEach((p) => {
+    const o = document.createElement("option");
+    o.value = p;
+    o.textContent = p;
+    tdProject.appendChild(o);
+  });
+  tdProject.value = current || "";
+}
+
 function openTaskModal(id) {
   editingTaskId = id;
   const t = getEditingTask();
   if (!t) return;
   tdDone.checked = !!t.done;
   tdTitle.value = t.text;
+  populateProjectSelect(t.project);
   tdDescription.value = t.description || "";
-  tdProject.value = t.project || "";
-  tdDue.value = t.due || "";
-  tdPriority.value = t.priority || "";
-  tdStatus.value = getStatus(t);
   renderModalSubtasks();
   renderModalAttachments();
   taskModal.hidden = false;
@@ -1430,32 +1439,6 @@ tdAddAttachment.addEventListener("keydown", (event) => {
   tdAddAttachment.value = "";
   saveTasks();
   renderModalAttachments();
-});
-
-tdDue.addEventListener("change", () => {
-  const t = getEditingTask();
-  if (!t) return;
-  t.due = tdDue.value || null;
-  saveTasks();
-  render();
-});
-
-tdPriority.addEventListener("change", () => {
-  const t = getEditingTask();
-  if (!t) return;
-  t.priority = tdPriority.value || null;
-  saveTasks();
-  render();
-});
-
-tdStatus.addEventListener("change", () => {
-  const t = getEditingTask();
-  if (!t) return;
-  t.status = tdStatus.value;
-  t.done = t.status === "done";
-  tdDone.checked = t.done;
-  saveTasks();
-  render();
 });
 
 tdAddSubtask.addEventListener("keydown", (event) => {

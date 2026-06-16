@@ -172,6 +172,9 @@
           <input id="td-title" class="td-title" type="text" />
         </div>
 
+        <div class="td-section-label">Project</div>
+        <select id="td-project" class="td-project"></select>
+
         <div class="td-section-label">Description</div>
         <textarea id="td-description" class="td-desc" placeholder="Add details about this task…"></textarea>
 
@@ -182,30 +185,6 @@
         <div class="td-section-label">Attachments</div>
         <div id="td-attachments" class="td-attachments"></div>
         <input id="td-add-attachment" class="add-subtask" type="text" placeholder="+ Paste a link to attach" autocomplete="off" />
-      </div>
-
-      <div class="td-side">
-        <label for="td-project">Project</label>
-        <input id="td-project" type="text" placeholder="Inbox" autocomplete="off" />
-
-        <label for="td-due">Date</label>
-        <input id="td-due" type="date" />
-
-        <label for="td-priority">Priority</label>
-        <select id="td-priority">
-          <option value="">None</option>
-          <option value="P1">P1 · Urgent</option>
-          <option value="P2">P2 · High</option>
-          <option value="P3">P3 · Medium</option>
-          <option value="P4">P4 · Low</option>
-        </select>
-
-        <label for="td-status">Status</label>
-        <select id="td-status">
-          <option value="todo">To do</option>
-          <option value="in_progress">In progress</option>
-          <option value="done">Done</option>
-        </select>
       </div>
     </div>
   </div>
