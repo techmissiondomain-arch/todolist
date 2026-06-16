@@ -162,7 +162,7 @@
   <div id="task-modal" class="modal" hidden>
     <div class="modal-card task-detail">
       <div class="modal-header">
-        <span class="td-project-tag">📥 <span id="td-project-label">Inbox</span></span>
+        <span class="td-modal-title">Task</span>
         <button id="td-close" class="modal-close" type="button" aria-label="Close">✕</button>
       </div>
 
@@ -171,9 +171,17 @@
           <input type="checkbox" id="td-done" />
           <input id="td-title" class="td-title" type="text" />
         </div>
-        <textarea id="td-description" class="td-desc" placeholder="Description"></textarea>
+
+        <div class="td-section-label">Description</div>
+        <textarea id="td-description" class="td-desc" placeholder="Add details about this task…"></textarea>
+
+        <div class="td-section-label">Sub-tasks</div>
         <div id="td-subtasks" class="td-subtasks"></div>
         <input id="td-add-subtask" class="add-subtask" type="text" placeholder="+ Add sub-task" autocomplete="off" />
+
+        <div class="td-section-label">Attachments</div>
+        <div id="td-attachments" class="td-attachments"></div>
+        <input id="td-add-attachment" class="add-subtask" type="text" placeholder="+ Paste a link to attach" autocomplete="off" />
       </div>
 
       <div class="td-side">

@@ -1287,10 +1287,11 @@ const tdDescription = document.getElementById("td-description");
 const tdSubtasks = document.getElementById("td-subtasks");
 const tdAddSubtask = document.getElementById("td-add-subtask");
 const tdProject = document.getElementById("td-project");
-const tdProjectLabel = document.getElementById("td-project-label");
 const tdDue = document.getElementById("td-due");
 const tdPriority = document.getElementById("td-priority");
 const tdStatus = document.getElementById("td-status");
+const tdAttachments = document.getElementById("td-attachments");
+const tdAddAttachment = document.getElementById("td-add-attachment");
 const tdClose = document.getElementById("td-close");
 
 let editingTaskId = null;
@@ -1307,11 +1308,11 @@ function openTaskModal(id) {
   tdTitle.value = t.text;
   tdDescription.value = t.description || "";
   tdProject.value = t.project || "";
-  tdProjectLabel.textContent = t.project || "Inbox";
   tdDue.value = t.due || "";
   tdPriority.value = t.priority || "";
   tdStatus.value = getStatus(t);
   renderModalSubtasks();
+  renderModalAttachments();
   taskModal.hidden = false;
   tdTitle.focus();
 }
@@ -1390,9 +1391,45 @@ tdProject.addEventListener("change", () => {
   const t = getEditingTask();
   if (!t) return;
   t.project = tdProject.value.trim() || null;
-  tdProjectLabel.textContent = t.project || "Inbox";
   saveTasks();
   render();
+});
+
+function renderModalAttachments() {
+  const t = getEditingTask();
+  tdAttachments.innerHTML = "";
+  if (!t) return;
+  (t.attachments || []).forEach((url, i) => {
+    const row = document.createElement("div");
+    row.className = "att-row";
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.className = "att-link";
+    link.textContent = url;
+    const del = document.createElement("button");
+    del.className = "delete-sub";
+    del.textContent = "×";
+    del.addEventListener("click", () => {
+      t.attachments.splice(i, 1);
+      saveTasks();
+      renderModalAttachments();
+    });
+    row.append(link, del);
+    tdAttachments.appendChild(row);
+  });
+}
+
+tdAddAttachment.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || tdAddAttachment.value.trim() === "") return;
+  const t = getEditingTask();
+  if (!t) return;
+  if (!t.attachments) t.attachments = [];
+  t.attachments.push(tdAddAttachment.value.trim());
+  tdAddAttachment.value = "";
+  saveTasks();
+  renderModalAttachments();
 });
 
 tdDue.addEventListener("change", () => {
