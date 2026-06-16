@@ -100,6 +100,12 @@ function matchesFilter(task) {
 
 // Add the project / score / schedule badges (whichever the task has) to a row.
 function appendBadges(container, task) {
+  if (task.priority) {
+    const badge = document.createElement("span");
+    badge.className = "badge priority " + task.priority.toLowerCase();
+    badge.textContent = task.priority;
+    container.appendChild(badge);
+  }
   if (task.project) {
     const badge = document.createElement("span");
     badge.className = "badge project";
@@ -240,8 +246,8 @@ function renderList() {
     const label = document.createElement("span");
     label.className = "task-text";
     label.textContent = task.text;
-    label.title = "Click to edit";
-    label.addEventListener("click", () => startEditing(index, row, label));
+    label.title = "Click to open";
+    label.addEventListener("click", () => openTaskModal(task.id));
 
     row.append(checkbox, label);
     appendBadges(row, task);
@@ -731,9 +737,13 @@ function reorderTask(sourceId, targetId) {
 
 // --- Keyboard shortcuts ----------------------------------------------------
 document.addEventListener("keydown", (event) => {
-  // Escape closes the add-task modal first, from anywhere.
+  // Escape closes an open modal first, from anywhere.
   if (event.key === "Escape" && !addModal.hidden) {
     closeModal();
+    return;
+  }
+  if (event.key === "Escape" && !taskModal.hidden) {
+    closeTaskModal();
     return;
   }
   const tag = (event.target.tagName || "").toLowerCase();
@@ -1267,6 +1277,165 @@ themeToggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
   localStorage.setItem(THEME_KEY, theme);
   applyTheme(theme);
+});
+
+// --- Task detail modal -----------------------------------------------------
+const taskModal = document.getElementById("task-modal");
+const tdDone = document.getElementById("td-done");
+const tdTitle = document.getElementById("td-title");
+const tdDescription = document.getElementById("td-description");
+const tdSubtasks = document.getElementById("td-subtasks");
+const tdAddSubtask = document.getElementById("td-add-subtask");
+const tdProject = document.getElementById("td-project");
+const tdProjectLabel = document.getElementById("td-project-label");
+const tdDue = document.getElementById("td-due");
+const tdPriority = document.getElementById("td-priority");
+const tdStatus = document.getElementById("td-status");
+const tdClose = document.getElementById("td-close");
+
+let editingTaskId = null;
+
+function getEditingTask() {
+  return tasks.find((t) => t.id === editingTaskId) || null;
+}
+
+function openTaskModal(id) {
+  editingTaskId = id;
+  const t = getEditingTask();
+  if (!t) return;
+  tdDone.checked = !!t.done;
+  tdTitle.value = t.text;
+  tdDescription.value = t.description || "";
+  tdProject.value = t.project || "";
+  tdProjectLabel.textContent = t.project || "Inbox";
+  tdDue.value = t.due || "";
+  tdPriority.value = t.priority || "";
+  tdStatus.value = getStatus(t);
+  renderModalSubtasks();
+  taskModal.hidden = false;
+  tdTitle.focus();
+}
+
+function closeTaskModal() {
+  editingTaskId = null;
+  taskModal.hidden = true;
+}
+
+function renderModalSubtasks() {
+  const t = getEditingTask();
+  tdSubtasks.innerHTML = "";
+  if (!t) return;
+  (t.subtasks || []).forEach((sub, i) => {
+    const row = document.createElement("div");
+    row.className = "subtask-row" + (sub.done ? " done" : "");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = sub.done;
+    cb.addEventListener("change", () => {
+      sub.done = !sub.done;
+      saveTasks();
+      renderModalSubtasks();
+      render();
+    });
+
+    const span = document.createElement("span");
+    span.className = "subtask-text";
+    span.textContent = sub.text;
+
+    const del = document.createElement("button");
+    del.className = "delete-sub";
+    del.textContent = "×";
+    del.addEventListener("click", () => {
+      t.subtasks.splice(i, 1);
+      saveTasks();
+      renderModalSubtasks();
+      render();
+    });
+
+    row.append(cb, span, del);
+    tdSubtasks.appendChild(row);
+  });
+}
+
+tdDone.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.done = tdDone.checked;
+  t.status = t.done ? "done" : "todo";
+  tdStatus.value = getStatus(t);
+  saveTasks();
+  render();
+});
+
+tdTitle.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  const value = tdTitle.value.trim();
+  if (value) {
+    t.text = value;
+    saveTasks();
+    render();
+  }
+});
+
+tdDescription.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.description = tdDescription.value.trim() || null;
+  saveTasks();
+});
+
+tdProject.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.project = tdProject.value.trim() || null;
+  tdProjectLabel.textContent = t.project || "Inbox";
+  saveTasks();
+  render();
+});
+
+tdDue.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.due = tdDue.value || null;
+  saveTasks();
+  render();
+});
+
+tdPriority.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.priority = tdPriority.value || null;
+  saveTasks();
+  render();
+});
+
+tdStatus.addEventListener("change", () => {
+  const t = getEditingTask();
+  if (!t) return;
+  t.status = tdStatus.value;
+  t.done = t.status === "done";
+  tdDone.checked = t.done;
+  saveTasks();
+  render();
+});
+
+tdAddSubtask.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || tdAddSubtask.value.trim() === "") return;
+  const t = getEditingTask();
+  if (!t) return;
+  if (!t.subtasks) t.subtasks = [];
+  t.subtasks.push({ text: tdAddSubtask.value.trim(), done: false });
+  tdAddSubtask.value = "";
+  saveTasks();
+  renderModalSubtasks();
+  render();
+});
+
+tdClose.addEventListener("click", closeTaskModal);
+taskModal.addEventListener("click", (event) => {
+  if (event.target === taskModal) closeTaskModal();
 });
 
 // Show whatever was saved when the page first loads.

@@ -159,6 +159,49 @@
     </div>
   </div>
 
+  <div id="task-modal" class="modal" hidden>
+    <div class="modal-card task-detail">
+      <div class="modal-header">
+        <span class="td-project-tag">📥 <span id="td-project-label">Inbox</span></span>
+        <button id="td-close" class="modal-close" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="td-main">
+        <div class="td-title-row">
+          <input type="checkbox" id="td-done" />
+          <input id="td-title" class="td-title" type="text" />
+        </div>
+        <textarea id="td-description" class="td-desc" placeholder="Description"></textarea>
+        <div id="td-subtasks" class="td-subtasks"></div>
+        <input id="td-add-subtask" class="add-subtask" type="text" placeholder="+ Add sub-task" autocomplete="off" />
+      </div>
+
+      <div class="td-side">
+        <label for="td-project">Project</label>
+        <input id="td-project" type="text" placeholder="Inbox" autocomplete="off" />
+
+        <label for="td-due">Date</label>
+        <input id="td-due" type="date" />
+
+        <label for="td-priority">Priority</label>
+        <select id="td-priority">
+          <option value="">None</option>
+          <option value="P1">P1 · Urgent</option>
+          <option value="P2">P2 · High</option>
+          <option value="P3">P3 · Medium</option>
+          <option value="P4">P4 · Low</option>
+        </select>
+
+        <label for="td-status">Status</label>
+        <select id="td-status">
+          <option value="todo">To do</option>
+          <option value="in_progress">In progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

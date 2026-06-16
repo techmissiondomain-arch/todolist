@@ -571,6 +571,115 @@ input[type="checkbox"] {
 .badge.schedule.later { background: #ede9fe; color: #6d28d9; }
 .badge.project { background: #f1f5f9; color: #334155; }
 .badge.repeat { background: #fce7f3; color: #be185d; }
+.badge.priority.p1 { background: #fee2e2; color: #b91c1c; }
+.badge.priority.p2 { background: #ffedd5; color: #c2410c; }
+.badge.priority.p3 { background: #dbeafe; color: #1d4ed8; }
+.badge.priority.p4 { background: #e5e7eb; color: #6b7280; }
+
+/* --- Task detail modal ---------------------------------------------------- */
+.task-detail {
+  max-width: 720px;
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 240px;
+}
+
+.task-detail .modal-header {
+  grid-column: 1 / -1;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.td-project-tag {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.td-main {
+  padding: 18px;
+  min-height: 280px;
+}
+
+.td-side {
+  padding: 18px;
+  background: var(--sidebar);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.td-side label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.td-side input,
+.td-side select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.td-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.td-title {
+  flex: 1;
+  border: none;
+  font-size: 20px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text);
+}
+
+.td-title:focus {
+  outline: none;
+}
+
+.td-desc {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  resize: vertical;
+  font-size: 14px;
+  color: var(--muted);
+  background: transparent;
+  font-family: inherit;
+  margin-bottom: 14px;
+}
+
+.td-desc:focus {
+  outline: none;
+  color: var(--text);
+}
+
+.td-subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  .task-detail {
+    grid-template-columns: 1fr;
+  }
+  .td-side {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
 
 /* --- Due date + buttons --------------------------------------------------- */
 .due-date {
