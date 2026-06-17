@@ -102,11 +102,14 @@ geotask_ai/
 ├── native_templates/                      # full drop-in native config
 │   ├── android/AndroidManifest.xml
 │   └── ios/{AppDelegate.swift, Info_additions.plist}
+├── assets/icon/                           # app_icon.png + app_icon_fg.png
 ├── tool/
 │   ├── bootstrap.ps1                       # one-command setup (Windows)
-│   └── bootstrap.sh                        # one-command setup (mac/Linux)
+│   ├── bootstrap.sh                        # one-command setup (mac/Linux)
+│   └── gen_icons.js                        # regenerates the icon PNGs (pure Node)
 ├── test/
-│   └── models_test.dart
+│   ├── models_test.dart
+│   └── geofence_evaluator_test.dart        # arrive/leave/dwell state machine
 ├── supabase/
 │   ├── schema.sql
 │   └── functions/parse-task/index.ts      # Claude lives here (server-side)
@@ -131,6 +134,7 @@ geotask_ai/
     │   ├── ai_service.dart
     │   ├── location_service.dart
     │   ├── geofencing_service.dart
+    │   ├── geofence_evaluator.dart          # pure enter/leave/dwell state machine
     │   └── notification_service.dart
     ├── repositories/
     │   ├── task_repository.dart
@@ -164,7 +168,8 @@ You'll need: **Flutter** installed (`flutter doctor` all green), a free
 ### Step A — Create the Flutter project shell (one command)
 This repo contains the source files but not the generated native folders. The
 bootstrap script generates them, fetches packages, drops in the native config
-(permissions + maps key + background modes), and bumps Android `minSdk` to 23.
+(permissions + maps key + background modes), bumps Android `minSdk` to 23, and
+generates the app icon + splash screen (teal map-pin logo).
 
 **Windows (PowerShell):**
 ```powershell

@@ -89,6 +89,11 @@ foreach ($g in @("android/app/build.gradle.kts", "android/app/build.gradle")) {
     }
 }
 
+# 7) App icon + splash screen
+Write-Host "==> Generating app icon + splash" -ForegroundColor Cyan
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+
 Write-Host ""
 Write-Host "✅ Bootstrap complete." -ForegroundColor Green
 Write-Host "Next:"

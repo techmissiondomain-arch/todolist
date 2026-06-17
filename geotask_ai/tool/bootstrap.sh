@@ -68,6 +68,11 @@ for g in android/app/build.gradle.kts android/app/build.gradle; do
   fi
 done
 
+# 7) App icon + splash screen
+echo "==> Generating app icon + splash"
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+
 echo ""
 echo "✅ Bootstrap complete."
 echo "Next:"
