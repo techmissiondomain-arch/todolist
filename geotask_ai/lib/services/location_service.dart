@@ -58,11 +58,8 @@ class LocationService {
       throw const LocationFailure('Location permission is needed for this.');
     }
     try {
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
+      // Default accuracy is "best"; this signature is stable across versions.
+      return await Geolocator.getCurrentPosition();
     } catch (e) {
       throw LocationFailure('Could not read your location.', e);
     }

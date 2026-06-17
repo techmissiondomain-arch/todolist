@@ -1,5 +1,5 @@
-/// Enums mirror the Postgres enum types defined in supabase/schema.sql.
-/// We keep the wire value (`value`) identical to the DB string.
+// Enums mirror the Postgres enum types defined in supabase/schema.sql.
+// We keep the wire value (`value`) identical to the DB string.
 
 enum TaskStatus {
   open('open'),

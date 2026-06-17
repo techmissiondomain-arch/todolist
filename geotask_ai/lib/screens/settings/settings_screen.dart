@@ -102,10 +102,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : (v) => _update(
                           _profile!.copyWith(notificationsEnabled: v)),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.shield_outlined),
-                  title: const Text('Our privacy promise'),
-                  subtitle: const Text(
+                const ListTile(
+                  leading: Icon(Icons.shield_outlined),
+                  title: Text('Our privacy promise'),
+                  subtitle: Text(
                       'We never sell your location. We store only the places '
                       'you add, and you can delete them anytime.'),
                 ),

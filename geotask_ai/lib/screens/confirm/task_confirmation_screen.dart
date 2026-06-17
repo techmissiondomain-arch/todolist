@@ -96,6 +96,9 @@ class _TaskConfirmationScreenState extends State<TaskConfirmationScreen> {
   }
 
   Future<void> _save() async {
+    // Capture provider before any await so we don't use context across a gap.
+    final taskProvider = context.read<TaskProvider>();
+
     // For location reminders we need: a confirmed place + background permission.
     if (_trigger.isLocationBased) {
       if (_place == null) {
@@ -128,7 +131,7 @@ class _TaskConfirmationScreenState extends State<TaskConfirmationScreen> {
       updatedAt: now,
     );
 
-    final saved = await context.read<TaskProvider>().add(draft);
+    final saved = await taskProvider.add(draft);
     if (!mounted) return;
     setState(() => _saving = false);
 
@@ -146,6 +149,7 @@ class _TaskConfirmationScreenState extends State<TaskConfirmationScreen> {
     await NotificationService.instance.requestPermission();
 
     if (await loc.hasAlways()) return true;
+    if (!mounted) return false;
 
     final proceed = await showDialog<bool>(
           context: context,

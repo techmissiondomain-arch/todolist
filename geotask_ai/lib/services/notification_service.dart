@@ -123,6 +123,8 @@ class NotificationService {
       tz.TZDateTime.from(when, tz.local),
       _details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: taskId,
     );
     Log.d('Notification scheduled for $when: $title');
