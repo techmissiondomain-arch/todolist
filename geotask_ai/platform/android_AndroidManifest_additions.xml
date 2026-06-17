@@ -1,0 +1,35 @@
+<!-- ====================================================================
+     MERGE THESE INTO: android/app/src/main/AndroidManifest.xml
+     (created when you run `flutter create .`)
+     ==================================================================== -->
+
+<!-- 1) Permissions go ABOVE the <application> tag -->
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+<!-- Background location: required for geofencing while app is closed -->
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+<!-- Foreground service so geofencing survives in the background -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+<!-- Local notifications + exact scheduled reminders -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+<uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+<!-- 2) INSIDE the <application ...> tag, add the Google Maps API key -->
+<!--
+<application ...>
+    <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
+    ...
+</application>
+-->
+
+<!-- NOTE: set minSdkVersion to at least 23 in android/app/build.gradle
+     for reliable background location + foreground service behaviour.
+
+     TIP: the native_templates/ folder contains a complete drop-in
+     AndroidManifest.xml; tool/bootstrap.* applies it for you. -->

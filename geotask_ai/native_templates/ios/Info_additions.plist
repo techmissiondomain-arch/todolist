@@ -1,0 +1,20 @@
+<!-- ====================================================================
+     The bootstrap script inserts these keys into ios/Runner/Info.plist
+     (just before the closing </dict>). You can also paste them by hand.
+     ==================================================================== -->
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GeoTask uses your location to remind you when you arrive at, leave, or are near a place.</string>
+
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GeoTask checks your location in the background so reminders fire even when the app is closed. We never sell your location.</string>
+
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>GeoTask checks your location in the background so reminders fire even when the app is closed. We never sell your location.</string>
+
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>

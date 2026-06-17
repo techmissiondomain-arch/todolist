@@ -1,0 +1,43 @@
+====================================================================
+MERGE THESE INTO: ios/Runner/Info.plist  (inside the top <dict>)
+====================================================================
+
+<!-- WHY each permission string matters: iOS shows these exact sentences to
+     the user. Write them clearly and respectfully. -->
+
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>GeoTask uses your location to remind you when you arrive at, leave, or are near a place.</string>
+
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>GeoTask checks your location in the background so reminders fire even when the app is closed. We never sell your location.</string>
+
+<key>NSLocationAlwaysUsageDescription</key>
+<string>GeoTask checks your location in the background so reminders fire even when the app is closed. We never sell your location.</string>
+
+<!-- Required background modes for geofencing + local notifications -->
+<key>UIBackgroundModes</key>
+<array>
+    <string>location</string>
+    <string>fetch</string>
+    <string>remote-notification</string>
+</array>
+
+====================================================================
+ALSO: add your Google Maps key in ios/Runner/AppDelegate.swift
+====================================================================
+
+import UIKit
+import Flutter
+import GoogleMaps   // <-- add
+
+@main
+@objc class AppDelegate: FlutterAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_API_KEY")  // <-- add
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
